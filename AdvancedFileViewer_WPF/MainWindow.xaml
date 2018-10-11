@@ -1,0 +1,92 @@
+﻿<Window x:Class="AdvancedFileViewer_WPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AdvancedFileViewer_WPF"
+        xmlns:treeView="clr-namespace:AdvancedFileViewer_WPF.TreeView"
+        xmlns:viewModels="clr-namespace:AdvancedFileViewer_WPF.ViewModels"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+
+    <Window.DataContext>
+        <viewModels:MainViewModel/>
+    </Window.DataContext>
+
+    <Grid>
+<Grid.RowDefinitions>
+    <RowDefinition Height="Auto"></RowDefinition>
+    <RowDefinition></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+
+        <Menu Height="20" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="2" Grid.Column="0"
+              Grid.Row="0">
+            <MenuItem Header="File">
+                <MenuItem Header="Select Folder" Command="{Binding SelectRootCommand}"/>
+                <Separator />
+                <MenuItem Header="Exit" Command="{Binding ExitCommand}"></MenuItem>
+            </MenuItem>
+        </Menu>
+
+        <Grid Row="1" Grid.Column="0">
+        <TreeView Margin="1" x:Name="treeView" Grid.Column="0" Grid.Row="1"
+                  treeView:MouseDoubleClick.Command="{Binding TreeDoubleClickCommand}" 
+                  treeView:MouseDoubleClick.CommandParameter="{Binding ElementName=treeView,Path=SelectedItem}" 
+                  ItemsSource="{Binding CurrentDirectories}">
+            <TreeView.Resources>
+                <HierarchicalDataTemplate DataType="{x:Type treeView:FileSystemObjectInfo}" ItemsSource="{Binding Children}">
+                    <WrapPanel>
+                        
+                        <Image Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}" Margin="0,1,8,1"/>
+                        <TextBlock FontSize="9" FontFamily="Comic Sans MS" Text="{Binding FileSystemInfo.Name}"/>
+                        <WrapPanel.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding}"/>
+                                <MenuItem Header="Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding}"/>
+                                <MenuItem Header="Cut" Command="{Binding MoveCommand}" CommandParameter="{Binding}"></MenuItem>
+                                <MenuItem Header="Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding}"></MenuItem>
+                                <MenuItem Header="Rename" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.RenameCommand}"></MenuItem>
+                                <MenuItem Header="Atributes" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.AtributesCommand}"></MenuItem>
+                                <MenuItem Header="Spy" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.SpyCommand}"></MenuItem>
+                                <MenuItem Header="Sign" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.SingCommand}"></MenuItem>
+                                <MenuItem Header="Decrypt">
+                                    <MenuItem Header="TripleDES" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.TripleDESCommand}"></MenuItem>
+                                    <MenuItem Header="Rijndael" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.RijndaelCommand}"></MenuItem>
+                                    <MenuItem Header="RC2" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.RC2Command}"></MenuItem>
+                                    <MenuItem Header="RSA" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.RSACommand}"></MenuItem>
+                                </MenuItem>
+
+                            </ContextMenu>
+                        </WrapPanel.ContextMenu>
+                    </WrapPanel>
+                    
+                </HierarchicalDataTemplate>
+            </TreeView.Resources>
+
+            <TreeView.ItemContainerStyle>
+                <Style TargetType="{x:Type TreeViewItem}">
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    <Setter Property="KeyboardNavigation.AcceptsReturn" Value="True" />
+                </Style>
+            </TreeView.ItemContainerStyle>
+
+            <TreeView.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform/>
+                    <SkewTransform/>
+                    <TranslateTransform/>
+                </TransformGroup>
+            </TreeView.RenderTransform>
+        </TreeView>
+        </Grid>
+        
+        <Grid Grid.Column="1" Grid.Row="1">
+<WebBrowser Source="https://www.google.com"></WebBrowser>
+        </Grid>
+    </Grid>
+</Window>
