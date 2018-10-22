@@ -24,7 +24,7 @@
             <ColumnDefinition></ColumnDefinition>
         </Grid.ColumnDefinitions>
 
-        <Menu Height="20" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="2" Grid.Column="0"
+        <Menu VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="2" Grid.Column="0"
               Grid.Row="0">
             <MenuItem Header="File">
                 <MenuItem Header="Select Folder" Command="{Binding SelectRootCommand}"/>
@@ -50,7 +50,7 @@
                                 <MenuItem Header="Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding}"/>
                                 <MenuItem Header="Cut" Command="{Binding MoveCommand}" CommandParameter="{Binding}"></MenuItem>
                                 <MenuItem Header="Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding}"></MenuItem>
-                                <MenuItem Header="Rename" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.RenameCommand}"></MenuItem>
+                                <MenuItem Header="Rename" Command="{Binding RenameCommand}" CommandParameter="{Binding}"></MenuItem>
                                 <MenuItem Header="Atributes" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.AtributesCommand}"></MenuItem>
                                 <MenuItem Header="Spy" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.SpyCommand}"></MenuItem>
                                 <MenuItem Header="Sign" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.SingCommand}"></MenuItem>

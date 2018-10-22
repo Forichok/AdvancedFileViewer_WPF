@@ -1,23 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using AdvancedFileViewer_WPF.TreeView;
 using DevExpress.Mvvm;
+using DevExpress.Mvvm.POCO;
 using DevExpress.Mvvm.UI;
+using Interpreter_WPF_3;
+using Microsoft.Speech.Recognition;
+using Microsoft.Speech.Synthesis;
+
 
 namespace AdvancedFileViewer_WPF.TreeView
 {    public class FileSystemObjectInfo : ViewModelBase
     {
+        #region Static Fields
+
         private static FileSystemObjectInfo bufferObjectInfo;
         private static bool isMovingOn;
+
+        #endregion
+
         #region Constructors
         public FileSystemObjectInfo(FileSystemInfo info)
         {
@@ -33,7 +47,14 @@ namespace AdvancedFileViewer_WPF.TreeView
             {
                 ImageSource = FileManager.GetImageSource(info.FullName);
             }
+
+            Children.CollectionChanged += CollectionChanged;
             PropertyChanged += FileSystemObjectInfo_PropertyChanged;
+        }
+
+        private void CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            RaisePropertiesChanged("Children");
         }
 
         public FileSystemObjectInfo(DriveInfo drive)
@@ -44,6 +65,8 @@ namespace AdvancedFileViewer_WPF.TreeView
         #endregion
 
         #region Properties
+
+        public bool IsSpyOn { get; set; }
 
         public ObservableCollection<FileSystemObjectInfo> Children { get; set; }
 
@@ -88,10 +111,11 @@ namespace AdvancedFileViewer_WPF.TreeView
             if (fileSystemObjectInfo.Children != null)
                 foreach (var child in fileSystemObjectInfo.Children)
                 {
-                   // child.Children.Clear();
+                    
+                    //child.Children.Clear();
                     child.ExploreDirectories();
                     child.ExploreFiles();
-                    //child.RaisePropertiesChanged();
+                    RaisePropertiesChanged("Children");
                     Task.Factory.StartNew(()=>UpdateChildren(child));
                 }
         }
@@ -138,9 +162,14 @@ namespace AdvancedFileViewer_WPF.TreeView
                             var directoriesInfo = new List<string>();
                             foreach (var dir in Children)
                             {
-                                directoriesInfo.Add(dir.FileSystemInfo.FullName); 
+                                var curDirectoryPath = dir.FileSystemInfo.FullName;
+                                directoriesInfo.Add(curDirectoryPath);
+                                if (!Directory.Exists(curDirectoryPath))
+                                {
+                                    dir.Parent.Children.Remove(dir);
+                                }
                             }
-
+                            
                             if (!directoriesInfo.Contains(newDirectory.FileSystemInfo.FullName))
                             {
                                 newDirectory.Parent = this;
@@ -176,13 +205,19 @@ namespace AdvancedFileViewer_WPF.TreeView
 
 
                             var newFile = new FileSystemObjectInfo(file);
-                            var FilesInfo = new List<string>();
-                            foreach (var dir in Children)
+                            var filesPaths = new List<string>();
+                            foreach (var fileObj in Children)
                             {
-                                FilesInfo.Add(dir.FileSystemInfo.FullName);
+                                filesPaths.Add(fileObj.FileSystemInfo.FullName);
+                                var curDirectoryPath = fileObj.FileSystemInfo.FullName;
+                                filesPaths.Add(curDirectoryPath);
+                                if (!Directory.Exists(curDirectoryPath))
+                                {
+                                    fileObj.Parent.Children.Remove(fileObj);
+                                }
                             }
 
-                            if (!FilesInfo.Contains(newFile.FileSystemInfo.FullName))
+                            if (!filesPaths.Contains(newFile.FileSystemInfo.FullName))
                             {
                                 newFile.Parent = this;
                                 Children.Add(newFile);
@@ -292,6 +327,36 @@ namespace AdvancedFileViewer_WPF.TreeView
             }
         }
 
+        public ICommand RenameCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+                        var newName = GetStringFromDialog();
+                        var fileExtention = obj.FileSystemInfo.Extension;
+                        newName += newName.EndsWith(fileExtention) || !newName.Contains('.') ? fileExtention : "";
+                        var oldPath = obj.FileSystemInfo.FullName;
+                        var newPath = oldPath.Replace(obj.FileSystemInfo.Name, newName);
+
+                        File.Move(oldPath, newPath);
+                        //obj = new FileSystemObjectInfo(new FileInfo(newPath));
+                        obj.Parent.Children.Remove(obj);
+                        obj.Parent.Children.Add(new FileSystemObjectInfo(new FileInfo(newPath)));
+
+                        UpdateTree(obj.Parent);
+                    }
+                    else
+                    {
+
+                    }
+
+                });
+            }
+        }
+
         #endregion
 
         void FileSystemObjectInfo_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -341,6 +406,17 @@ namespace AdvancedFileViewer_WPF.TreeView
                 
         }
 
+        private string GetStringFromDialog()
+        {
+            var inputDialog = new InputDialog("Please, input new filename:");
+            var result = string.Empty;
+
+            if (inputDialog.ShowDialog() == true)
+            {
+                result = inputDialog.Answer;
+            }
+            return result;
+        }
 
         private class DummyFileSystemObjectInfo : FileSystemObjectInfo
         {
