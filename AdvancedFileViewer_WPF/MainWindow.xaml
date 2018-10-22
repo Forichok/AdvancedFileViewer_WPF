@@ -21,7 +21,7 @@
 
         <Grid.ColumnDefinitions>
             <ColumnDefinition></ColumnDefinition>
-            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition Width="3*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
 
         <Menu VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="2" Grid.Column="0"
@@ -44,8 +44,23 @@
             </MenuItem>
         </Menu>
 
-        <Grid Row="1" Grid.Column="0">
-        <TreeView Margin="1" x:Name="treeView" Grid.Column="0" Grid.Row="1"
+        <Grid Row="1" Column="0">
+            <StackPanel VerticalAlignment="Bottom">
+                <Border Margin="10"  Background="Aquamarine">
+                <TextBox   Text="{Binding UserName}"></TextBox>
+                </Border>
+                <Border Margin="10"  Background="Aquamarine">
+                    <PasswordBox 
+                             local:PasswordHelper.Attach="True" 
+                             local:PasswordHelper.Password="{Binding Password,Mode=OneWayToSource, UpdateSourceTrigger=LostFocus}"
+                  ></PasswordBox>
+                </Border>
+                <Button Content="Login" Margin="10" Command="{Binding LoginCommand}"></Button>
+            </StackPanel>
+        </Grid>
+
+        <Grid Row="1" Grid.Column="1" >
+        <TreeView Margin="1" x:Name="treeView" Grid.Column="0" 
                   treeView:MouseDoubleClick.Command="{Binding TreeDoubleClickCommand}" 
                   treeView:MouseDoubleClick.CommandParameter="{Binding ElementName=treeView,Path=SelectedItem}" 
                   ItemsSource="{Binding CurrentDirectories}">
@@ -108,8 +123,7 @@
         </TreeView>
         </Grid>
         
-        <Grid Grid.Column="1" Grid.Row="1">
-<WebBrowser Source="https://www.google.com"></WebBrowser>
-        </Grid>
+
     </Grid>
 </Window>
+

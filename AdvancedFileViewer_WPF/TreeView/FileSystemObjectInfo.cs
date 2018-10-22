@@ -3,27 +3,15 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Configuration;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Security.Cryptography;
-using System.Text;
-
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
-using AdvancedFileViewer_WPF.TreeView;
 using AdvancedFileViewer_WPF.ViewModels;
 using DevExpress.Mvvm;
-using DevExpress.Mvvm.POCO;
-using DevExpress.Mvvm.UI;
 using Interpreter_WPF_3;
-using Microsoft.Speech.Recognition;
-using Microsoft.Speech.Synthesis;
 
 
 namespace AdvancedFileViewer_WPF.TreeView
@@ -66,10 +54,11 @@ namespace AdvancedFileViewer_WPF.TreeView
         
         private FileSystemObjectInfo bufferObjectInfo;
         private bool isMovingOn;
-        private Queue<string> _logs=new Queue<string>();
+        private static Queue<string> _logs=new Queue<string>();
+        public static Users user { get; set; }
         public bool IsSpyOn { get; set; }
 
-        public Queue<string> Logs
+        public static Queue<string> Logs
         {
             get
             {

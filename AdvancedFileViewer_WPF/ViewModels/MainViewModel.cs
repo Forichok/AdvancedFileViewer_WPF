@@ -18,7 +18,9 @@ namespace AdvancedFileViewer_WPF.ViewModels
     {
         public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
 
-
+        public string UserName { get; set; } = "Username";
+        public string Password { get; set; }
+        public Users CurrentUsers { get; set; }
 
         public static bool isKeyRequired;
         public bool IsKeyInputRequired { get =>isKeyRequired; set => isKeyRequired=value;
@@ -71,6 +73,21 @@ namespace AdvancedFileViewer_WPF.ViewModels
                         }
                     }
 
+                });
+            }
+        }
+        public ICommand LoginCommand
+        {
+            get
+            {
+                return new DelegateCommand(() =>
+                {
+                    var User = DbHandler.GetUserInfo(UserName, Password);
+                    FileSystemObjectInfo.user = User;
+                    if (User==null) return;
+                    var curDir =  new FileSystemObjectInfo(new DirectoryInfo(User.CurrentDirectory));
+                    CurrentDirectories.Clear();
+                    CurrentDirectories.Add(curDir);
                 });
             }
         }

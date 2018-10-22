@@ -22,5 +22,17 @@ namespace AdvancedFileViewer_WPF.Properties {
                 return defaultInstance;
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.ConnectionString)]
+        [global::System.Configuration.DefaultSettingValueAttribute("Data Source=(LocalDB)\\MSSQLLocalDB;AttachDbFilename=C:\\Users\\nnuda\\source\\repos\\L" +
+            "ABS_sem5\\AdvancedFileViewer_WPF\\AdvancedFileViewer_WPF\\ViewModels\\Users.mdf;Inte" +
+            "grated Security=True")]
+        public string DbConnect {
+            get {
+                return ((string)(this["DbConnect"]));
+            }
+        }
     }
 }
