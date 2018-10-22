@@ -248,7 +248,7 @@ namespace AdvancedFileViewer_WPF.TreeView
                     }
                     else
                     {
-                        Directory.Delete(obj.FileSystemInfo.FullName);
+                        Directory.Delete(obj.FileSystemInfo.FullName,true);
                     }
                     
                     var parent = obj.Parent;
@@ -333,26 +333,26 @@ namespace AdvancedFileViewer_WPF.TreeView
             {
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
+                    var newName = GetStringFromDialog();
+                    var oldPath = obj.FileSystemInfo.FullName;
+                    var fileExtention = obj.FileSystemInfo.Extension;
+                    newName += newName.EndsWith(fileExtention) || !newName.Contains('.') ? fileExtention : "";
+                    var newPath = oldPath.Replace(obj.FileSystemInfo.Name, newName);
+
                     if (obj.FileSystemInfo.Extension != "")
                     {
-                        var newName = GetStringFromDialog();
-                        var fileExtention = obj.FileSystemInfo.Extension;
-                        newName += newName.EndsWith(fileExtention) || !newName.Contains('.') ? fileExtention : "";
-                        var oldPath = obj.FileSystemInfo.FullName;
-                        var newPath = oldPath.Replace(obj.FileSystemInfo.Name, newName);
-
                         File.Move(oldPath, newPath);
-                        //obj = new FileSystemObjectInfo(new FileInfo(newPath));
-                        obj.Parent.Children.Remove(obj);
                         obj.Parent.Children.Add(new FileSystemObjectInfo(new FileInfo(newPath)));
-
-                        UpdateTree(obj.Parent);
                     }
                     else
                     {
-
+                        CopyDirectory(oldPath,newPath);
+                        Directory.Delete(oldPath, true);
+                        obj.Parent.Children.Add(new FileSystemObjectInfo(new DirectoryInfo(newPath)));
                     }
-
+                    obj.Parent.Children.Remove(obj);
+                    
+                    UpdateTree(obj.Parent);
                 });
             }
         }
