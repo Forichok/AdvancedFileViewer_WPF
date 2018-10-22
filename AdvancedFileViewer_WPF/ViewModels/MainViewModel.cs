@@ -10,12 +10,19 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using AdvancedFileViewer_WPF.TreeView;
 using DevExpress.Mvvm;
+using Interpreter_WPF_3;
 
 namespace AdvancedFileViewer_WPF.ViewModels
 {
     class MainViewModel : ViewModelBase
     {
         public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
+
+
+
+        public static bool isKeyRequired;
+        public bool IsKeyInputRequired { get =>isKeyRequired; set => isKeyRequired=value;
+        }
 
         public MainViewModel()
         {
@@ -43,6 +50,31 @@ namespace AdvancedFileViewer_WPF.ViewModels
             }
         }
 
+        public ICommand ChangeKeyCommand
+        {
+            get
+            {
+                return new DelegateCommand(() =>
+                {
+                    var inputDialog = new InputDialog("Input key:");
+                    var result = string.Empty;
+
+                    if (inputDialog.ShowDialog() == true)
+                    {
+                        result = inputDialog.Answer;
+                        try
+                        {
+                            Crypto.Decryptkey = result;
+                        }
+                        catch (Exception e)
+                        {
+                        }
+                    }
+
+                });
+            }
+        }
+
         public ICommand TreeDoubleClickCommand
         {
             get
@@ -61,7 +93,6 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 });
             }
         }
-
 
         public ICommand ExitCommand
         {
@@ -91,6 +122,8 @@ namespace AdvancedFileViewer_WPF.ViewModels
             Process.Start(pi);
         }
         #endregion
+
+      
     }
 }
 

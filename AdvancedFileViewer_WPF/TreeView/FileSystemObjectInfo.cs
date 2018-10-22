@@ -3,17 +3,21 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Configuration;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using AdvancedFileViewer_WPF.TreeView;
+using AdvancedFileViewer_WPF.ViewModels;
 using DevExpress.Mvvm;
 using DevExpress.Mvvm.POCO;
 using DevExpress.Mvvm.UI;
@@ -25,14 +29,8 @@ using Microsoft.Speech.Synthesis;
 namespace AdvancedFileViewer_WPF.TreeView
 {    public class FileSystemObjectInfo : ViewModelBase
     {
-        #region Static Fields
-
-        private static FileSystemObjectInfo bufferObjectInfo;
-        private static bool isMovingOn;
-
-        #endregion
-
         #region Constructors
+
         public FileSystemObjectInfo(FileSystemInfo info)
         {
             if (this is DummyFileSystemObjectInfo) return;
@@ -65,8 +63,25 @@ namespace AdvancedFileViewer_WPF.TreeView
         #endregion
 
         #region Properties
-
+        
+        private FileSystemObjectInfo bufferObjectInfo;
+        private bool isMovingOn;
+        private Queue<string> _logs=new Queue<string>();
         public bool IsSpyOn { get; set; }
+
+        public Queue<string> Logs
+        {
+            get
+            {
+                while (_logs.Count > 10)
+                {
+                    _logs.Dequeue();
+                }
+
+                return _logs;
+            }
+            set => _logs = value;
+        }
 
         public ObservableCollection<FileSystemObjectInfo> Children { get; set; }
 
@@ -85,14 +100,9 @@ namespace AdvancedFileViewer_WPF.TreeView
 
         #region Methods
 
-        public void RaisePropertiesChanged()
+        public void UpdateTree()
         {
-            UpdateTree(this);
-        }
-
-        private void UpdateTree(FileSystemObjectInfo fileSystemObjectInfo)
-        {
-            var tmpNode = fileSystemObjectInfo;
+            var tmpNode = this;
             while (tmpNode.Parent != null)
             {
                 
@@ -137,7 +147,7 @@ namespace AdvancedFileViewer_WPF.TreeView
             return null;
         }
 
-        private void RemoveDummy()
+        public void RemoveDummy()
         {
             Children.Remove(GetDummy());
         }
@@ -150,6 +160,8 @@ namespace AdvancedFileViewer_WPF.TreeView
             }
             try
             {
+                var tmpDirectories = new FileSystemObjectInfo[Children.Count];
+                Children.CopyTo(tmpDirectories, 0);
                 if (FileSystemInfo is DirectoryInfo)
                 {
                     var directories = ((DirectoryInfo)FileSystemInfo).GetDirectories();
@@ -160,7 +172,7 @@ namespace AdvancedFileViewer_WPF.TreeView
                         {
                             var newDirectory = new FileSystemObjectInfo(directory);
                             var directoriesInfo = new List<string>();
-                            foreach (var dir in Children)
+                            foreach (var dir in tmpDirectories)
                             {
                                 var curDirectoryPath = dir.FileSystemInfo.FullName;
                                 directoriesInfo.Add(curDirectoryPath);
@@ -187,16 +199,21 @@ namespace AdvancedFileViewer_WPF.TreeView
 
         private void ExploreFiles()
         {
-            if (!ReferenceEquals(Drive, null))
-            {
-                if (!Drive.IsReady) return;
-            }
-
             try
             {
+
+
+                if (!ReferenceEquals(Drive, null))
+                {
+                    if (!Drive.IsReady) return;
+                }
+
+
                 if (FileSystemInfo is DirectoryInfo)
                 {
                     var files = ((DirectoryInfo) FileSystemInfo).GetFiles();
+                    var newFiles = new FileSystemObjectInfo[Children.Count];
+                    Children.CopyTo(newFiles, 0);
                     foreach (var file in files.OrderBy(d => d.Name))
                     {
                         if (!Equals((file.Attributes & FileAttributes.System), FileAttributes.System) &&
@@ -206,7 +223,7 @@ namespace AdvancedFileViewer_WPF.TreeView
 
                             var newFile = new FileSystemObjectInfo(file);
                             var filesPaths = new List<string>();
-                            foreach (var fileObj in Children)
+                            foreach (var fileObj in newFiles)
                             {
                                 filesPaths.Add(fileObj.FileSystemInfo.FullName);
                                 var curDirectoryPath = fileObj.FileSystemInfo.FullName;
@@ -226,11 +243,10 @@ namespace AdvancedFileViewer_WPF.TreeView
                     }
                 }
             }
-            catch
-            {
-                /*throw;*/
-            }
+            catch (Exception) { }
         }
+
+
 
         #endregion
 
@@ -248,13 +264,13 @@ namespace AdvancedFileViewer_WPF.TreeView
                     }
                     else
                     {
-                        Directory.Delete(obj.FileSystemInfo.FullName,true);
+                        Directory.Delete(obj.FileSystemInfo.FullName, true);
                     }
-                    
+                    _logs.Enqueue($"{obj.FileSystemInfo.FullName} has been deleted");
                     var parent = obj.Parent;
                     parent.Children.Remove(obj);
                     obj.RemoveDummy();
-                    UpdateTree(parent);
+                    parent.UpdateTree();
                 });
             }
         }
@@ -263,7 +279,11 @@ namespace AdvancedFileViewer_WPF.TreeView
         {
             get
             {
-                return new DelegateCommand<FileSystemObjectInfo>((obj) => { bufferObjectInfo = obj; });
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    _logs.Enqueue($"{obj.FileSystemInfo.FullName} has been copied");
+                    bufferObjectInfo = obj;
+                });
             }
         }
 
@@ -279,6 +299,7 @@ namespace AdvancedFileViewer_WPF.TreeView
                         {
                             if (obj.FileSystemInfo.Extension == "")
                             {
+                                _logs.Enqueue($"{bufferObjectInfo.FileSystemInfo.FullName} has been inserted into {obj.FileSystemInfo.FullName}");
                                 var newPath = obj.FileSystemInfo.FullName + "\\" + bufferObjectInfo.FileSystemInfo.Name;
                                 if (bufferObjectInfo.FileSystemInfo.Extension != "")
                                 {
@@ -303,8 +324,8 @@ namespace AdvancedFileViewer_WPF.TreeView
                                     }
                                 }
                             }
-
-                            UpdateTree(obj);
+ 
+                            obj.UpdateTree();
                         }
                     }
                     catch (Exception e)
@@ -321,6 +342,7 @@ namespace AdvancedFileViewer_WPF.TreeView
             {
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
+                    _logs.Enqueue($"{bufferObjectInfo.FileSystemInfo.FullName} has been moved to {obj.FileSystemInfo.FullName}");
                     isMovingOn = true;
                     bufferObjectInfo = obj;
                 });
@@ -334,6 +356,8 @@ namespace AdvancedFileViewer_WPF.TreeView
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
                     var newName = GetStringFromDialog();
+                    if(newName.Trim().Length==0) return;
+                    
                     var oldPath = obj.FileSystemInfo.FullName;
                     var fileExtention = obj.FileSystemInfo.Extension;
                     newName += newName.EndsWith(fileExtention) || !newName.Contains('.') ? fileExtention : "";
@@ -346,21 +370,223 @@ namespace AdvancedFileViewer_WPF.TreeView
                     }
                     else
                     {
-                        CopyDirectory(oldPath,newPath);
+                        CopyDirectory(oldPath, newPath);
                         Directory.Delete(oldPath, true);
                         obj.Parent.Children.Add(new FileSystemObjectInfo(new DirectoryInfo(newPath)));
                     }
                     obj.Parent.Children.Remove(obj);
-                    
-                    UpdateTree(obj.Parent);
+                    _logs.Enqueue($"{oldPath} has been renamed to {newPath}");
+                    obj.UpdateTree();
+                });
+            }
+        }
+
+        public ICommand AtributesCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    MessageBox.Show(obj.FileSystemInfo.Attributes.ToString());
+                    _logs.Enqueue($"{bufferObjectInfo.FileSystemInfo.FullName}  atributes has been showed");
+                });
+            }
+        }
+
+        public ICommand TripleDESEncryptCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.TripleDESEncrypt);
+                    }
+                });
+            }
+        }
+
+        public ICommand TripleDESDecryptCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+                        StartCrypting(obj.FileSystemInfo.FullName,Crypto.TripleDESDecrypt);
+                    }
+                });
+            }
+        }
+
+        public ICommand RijndaelEncryptCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RijndaelEncrypt);
+                    }
+                });
+            }
+        }
+
+        public ICommand RijndaelDecryptCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+                        
+                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RijndaelDecrypt);
+                    }
+                });
+            }
+        }
+        public ICommand RC2EncryptCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RC2Encrypt);
+                    }
+                });
+            }
+        }
+
+        public ICommand RC2DecryptCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+
+                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RC2Decrypt);
+                    }
+                });
+            }
+        }
+        public ICommand RSAEncryptCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RC2Encrypt);
+                    }
+                });
+            }
+        }
+
+        public ICommand RSADecryptCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+
+                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RC2Decrypt);
+                    }
                 });
             }
         }
 
         #endregion
 
+        #region Helper methods
+
+
+        private static void CopyDirectory(string SourcePath, string DestinationPath)
+        {
+            if (!Directory.Exists(DestinationPath))
+            {
+                Directory.CreateDirectory(DestinationPath);
+            }
+            foreach (string dirPath in Directory.GetDirectories(SourcePath, "*",
+                SearchOption.AllDirectories))
+            {
+                var newPath = dirPath.Replace(SourcePath, DestinationPath);
+                Directory.CreateDirectory(newPath);
+            }
+
+            foreach (string newPath in Directory.GetFiles(SourcePath, "*.*",
+                SearchOption.AllDirectories))
+            {
+                var newFilePath = newPath.Replace(SourcePath, DestinationPath);
+                File.Copy(newPath, newFilePath);
+            }
+
+        }
+
+        private void StartCrypting(string path, Func<byte[], string, byte[]> DecryptFunc)
+        {
+            byte[] info;
+            if (MainViewModel.isKeyRequired)
+            {
+                var inputDialog = new InputDialog("Please, input key:");
+                var result = string.Empty;
+
+                if (inputDialog.ShowDialog() == true)
+                {
+                    result = inputDialog.Answer;
+                    if (result.Trim().Length == 0) return;
+                    Crypto.Decryptkey = result;
+                }
+            }
+            using (var reader = new BinaryReader(new FileStream(path, FileMode.Open)))
+            {
+                info = reader.ReadAllBytes();
+            }
+
+            using (var writer =
+                new BinaryWriter(new FileStream(path, FileMode.Truncate)))
+            {
+                
+                writer.Write(DecryptFunc.Invoke(info, Crypto.Decryptkey));
+            }
+
+            FileSystemObjectInfo_PropertyChanged(this, null);
+            _logs.Enqueue($"{path} has beed {DecryptFunc.Method.Name}");
+        }
+
+        private static string GetStringFromDialog()
+        {
+            var inputDialog = new InputDialog("Please, input new filename:");
+            var result = string.Empty;
+
+            if (inputDialog.ShowDialog() == true)
+            {
+                result = inputDialog.Answer;
+            }
+            return result;
+        }
+
+        #endregion
+
         void FileSystemObjectInfo_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            if (IsSpyOn)
+            {
+                using (var writer = new StreamWriter(new FileStream(Directory.GetCurrentDirectory()+"\\logs.txt", FileMode.Truncate)))
+                {
+                    writer.Write(string.Join(Environment.NewLine,Logs));
+                }
+            }
             if (FileSystemInfo is DirectoryInfo)
             {
                 if (string.Equals(e.PropertyName, "IsExpanded", StringComparison.CurrentCultureIgnoreCase))
@@ -383,40 +609,7 @@ namespace AdvancedFileViewer_WPF.TreeView
             }
         }
 
-        private void CopyDirectory(string SourcePath, string DestinationPath)
-        {
-            if (!Directory.Exists(DestinationPath))
-            {
-                Directory.CreateDirectory(DestinationPath);
-            }
-            foreach (string dirPath in Directory.GetDirectories(SourcePath, "*",
-                SearchOption.AllDirectories))
-            {
-                var newPath = dirPath.Replace(SourcePath, DestinationPath);
-                Directory.CreateDirectory(newPath);
-            }
 
-            //Copy all the files & Replaces any files with the same name
-            foreach (string newPath in Directory.GetFiles(SourcePath, "*.*",
-                SearchOption.AllDirectories))
-            {
-                var newFilePath = newPath.Replace(SourcePath, DestinationPath);
-                File.Copy(newPath, newFilePath);
-            }
-                
-        }
-
-        private string GetStringFromDialog()
-        {
-            var inputDialog = new InputDialog("Please, input new filename:");
-            var result = string.Empty;
-
-            if (inputDialog.ShowDialog() == true)
-            {
-                result = inputDialog.Answer;
-            }
-            return result;
-        }
 
         private class DummyFileSystemObjectInfo : FileSystemObjectInfo
         {

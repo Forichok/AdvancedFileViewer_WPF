@@ -31,6 +31,17 @@
                 <Separator />
                 <MenuItem Header="Exit" Command="{Binding ExitCommand}"></MenuItem>
             </MenuItem>
+            <MenuItem Header="Settings">
+                <MenuItem Header="Change Key" Command="{Binding ChangeKeyCommand}"></MenuItem>
+                <MenuItem >
+                    <MenuItem.Header>
+                        <WrapPanel>
+                            <TextBlock Text="Key Input Required"></TextBlock>
+                            <ToggleButton Margin="10,0,0,0" IsChecked="{Binding IsKeyInputRequired}"></ToggleButton>
+                        </WrapPanel>
+                    </MenuItem.Header>
+                </MenuItem>
+            </MenuItem>
         </Menu>
 
         <Grid Row="1" Grid.Column="0">
@@ -45,23 +56,35 @@
                         <Image Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}" Margin="0,1,8,1"/>
                         <TextBlock FontSize="9" FontFamily="Comic Sans MS" Text="{Binding FileSystemInfo.Name}"/>
                         <WrapPanel.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding}"/>
+                                <ContextMenu>
+                                    <MenuItem Header="Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding}"/>
                                 <MenuItem Header="Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding}"/>
                                 <MenuItem Header="Cut" Command="{Binding MoveCommand}" CommandParameter="{Binding}"></MenuItem>
                                 <MenuItem Header="Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding}"></MenuItem>
-                                <MenuItem Header="Rename" Command="{Binding RenameCommand}" CommandParameter="{Binding}"></MenuItem>
-                                <MenuItem Header="Atributes" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.AtributesCommand}"></MenuItem>
-                                <MenuItem Header="Spy" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.SpyCommand}"></MenuItem>
-                                <MenuItem Header="Sign" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.SingCommand}"></MenuItem>
-                                <MenuItem Header="Decrypt">
-                                    <MenuItem Header="TripleDES" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.TripleDESCommand}"></MenuItem>
-                                    <MenuItem Header="Rijndael" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.RijndaelCommand}"></MenuItem>
-                                    <MenuItem Header="RC2" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.RC2Command}"></MenuItem>
-                                    <MenuItem Header="RSA" Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=TreeView},Path = DataContext.RSACommand}"></MenuItem>
-                                </MenuItem>
+                                    <MenuItem Header="Rename" Command="{Binding RenameCommand}" CommandParameter="{Binding}"></MenuItem>
+                                <MenuItem Header="Atributes" Command="{Binding AtributesCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    <MenuItem >
+                                        <MenuItem.Header>
+                                              <WrapPanel>
+                                                  <TextBlock Text="Spy"></TextBlock>
+                                                  <ToggleButton Margin="10,0,0,0" IsChecked="{Binding IsSpyOn}"></ToggleButton>
+                                              </WrapPanel>
+                                        </MenuItem.Header>
+                                    </MenuItem>
+                                <MenuItem Header="Encrypt">
+                                    <MenuItem Header="TripleDES" Command="{Binding TripleDESEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="Rijndael" Command="{Binding RijndaelEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RC2" Command="{Binding RC2EncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RSA" Command="{Binding RSAEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    </MenuItem>
+                                    <MenuItem Header="Decrypt">
+                                        <MenuItem Header="TripleDES" Command="{Binding TripleDESDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="Rijndael" Command="{Binding RijndaelDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RC2" Command="{Binding RC2DecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RSA" Command="{Binding RSADecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    </MenuItem>
 
-                            </ContextMenu>
+                                </ContextMenu>
                         </WrapPanel.ContextMenu>
                     </WrapPanel>
                     
