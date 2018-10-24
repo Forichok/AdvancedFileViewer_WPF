@@ -19,9 +19,10 @@ namespace AdvancedFileViewer_WPF.ViewModels
         public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
 
         public string UserName { get; set; } = "Username";
+        public string Test { get; set; } = "Test";
         public string Password { get; set; }
-        public Users CurrentUsers { get; set; }
-
+        public Users CurrentUser { get; set; }
+    
         public static bool isKeyRequired;
         public bool IsKeyInputRequired { get =>isKeyRequired; set => isKeyRequired=value;
         }
@@ -46,6 +47,8 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     {
                         CurrentDirectories.Clear();
                         CurrentDirectories.Add(new FileSystemObjectInfo(new DirectoryInfo(fbd.SelectedPath)));
+                        CurrentUser.CurrentDirectory = fbd.SelectedPath;
+                        DbHandler.UpdateUserInfo(CurrentUser);
                         RaisePropertyChanged("Commands");
                     }
                 });
@@ -85,9 +88,33 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     var User = DbHandler.GetUserInfo(UserName, Password);
                     FileSystemObjectInfo.user = User;
                     if (User==null) return;
+                    CurrentUser = User;
                     var curDir =  new FileSystemObjectInfo(new DirectoryInfo(User.CurrentDirectory));
                     CurrentDirectories.Clear();
                     CurrentDirectories.Add(curDir);
+                });
+            }
+        }
+        public ICommand DeleteCommand
+        {
+            get
+            {
+                return new DelegateCommand<object>((obje) =>
+                {
+                    var obj = obje as FileSystemObjectInfo;
+                    if (obj.FileSystemInfo.Extension != "")
+                    {
+                        File.Delete(obj.FileSystemInfo.FullName);
+                    }
+                    else
+                    {
+                        Directory.Delete(obj.FileSystemInfo.FullName, true);
+                    }
+//                    _logs.Enqueue($"{obj.FileSystemInfo.FullName} has been deleted");
+                    var parent = obj.Parent;
+                    parent.Children.Remove(obj);
+                    obj.RemoveDummy();
+                    parent.UpdateTree();
                 });
             }
         }

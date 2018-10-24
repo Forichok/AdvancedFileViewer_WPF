@@ -140,6 +140,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>DbModel.edmx</DependentUpon>
     </Compile>
+    <Compile Include="MouseClick.cs" />
     <Compile Include="PasswordHelper.cs" />
     <Compile Include="TreeView\Crypto.cs" />
     <Compile Include="TreeView\FileManager.cs" />

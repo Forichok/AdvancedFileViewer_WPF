@@ -7,11 +7,18 @@
         xmlns:treeView="clr-namespace:AdvancedFileViewer_WPF.TreeView"
         xmlns:viewModels="clr-namespace:AdvancedFileViewer_WPF.ViewModels"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800" Name="window">
 
+
+    <Window.Resources>
+        <viewModels:MainViewModel x:Key="vm"></viewModels:MainViewModel>
+    </Window.Resources>
+    
     <Window.DataContext>
-        <viewModels:MainViewModel/>
+         <DynamicResource ResourceKey="vm"></DynamicResource>
     </Window.DataContext>
+
+    
 
     <Grid>
 <Grid.RowDefinitions>
@@ -47,7 +54,7 @@
         <Grid Row="1" Column="0">
             <StackPanel VerticalAlignment="Bottom">
                 <Border Margin="10"  Background="Aquamarine">
-                <TextBox   Text="{Binding UserName}"></TextBox>
+                    <TextBox   Text="{Binding ElementName=window, Path=DataContext.Test}"></TextBox>
                 </Border>
                 <Border Margin="10"  Background="Aquamarine">
                     <PasswordBox 
@@ -67,15 +74,14 @@
             <TreeView.Resources>
                 <HierarchicalDataTemplate DataType="{x:Type treeView:FileSystemObjectInfo}" ItemsSource="{Binding Children}">
                     <WrapPanel>
-                        
                         <Image Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}" Margin="0,1,8,1"/>
                         <TextBlock FontSize="9" FontFamily="Comic Sans MS" Text="{Binding FileSystemInfo.Name}"/>
                         <WrapPanel.ContextMenu>
                                 <ContextMenu>
-                                    <MenuItem Header="Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding}"/>
+                                <MenuItem Header="Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding}"/>
                                 <MenuItem Header="Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding}"/>
                                 <MenuItem Header="Cut" Command="{Binding MoveCommand}" CommandParameter="{Binding}"></MenuItem>
-                                <MenuItem Header="Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    <MenuItem Header="Delete" Command="{Binding Source={StaticResource vm},Path=DeleteCommand}" CommandParameter="{Binding}"></MenuItem>
                                     <MenuItem Header="Rename" Command="{Binding RenameCommand}" CommandParameter="{Binding}"></MenuItem>
                                 <MenuItem Header="Atributes" Command="{Binding AtributesCommand}" CommandParameter="{Binding}"></MenuItem>
                                     <MenuItem >
