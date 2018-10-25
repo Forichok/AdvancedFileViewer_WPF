@@ -72,18 +72,18 @@
                   treeView:MouseDoubleClick.CommandParameter="{Binding ElementName=treeView,Path=SelectedItem}" 
                   ItemsSource="{Binding CurrentDirectories}">
             <TreeView.Resources>
-                <HierarchicalDataTemplate DataType="{x:Type treeView:FileSystemObjectInfo}" ItemsSource="{Binding Children}">
+                <HierarchicalDataTemplate DataType="{x:Type treeView:FileSystemObjectInfo}" ItemsSource="{Binding Children, UpdateSourceTrigger=PropertyChanged}">
                     <WrapPanel>
                         <Image Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}" Margin="0,1,8,1"/>
                         <TextBlock FontSize="9" FontFamily="Comic Sans MS" Text="{Binding FileSystemInfo.Name}"/>
                         <WrapPanel.ContextMenu>
                                 <ContextMenu>
-                                <MenuItem Header="Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding}"/>
-                                <MenuItem Header="Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding}"/>
-                                <MenuItem Header="Cut" Command="{Binding MoveCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    <MenuItem Header="Copy" Command="{Binding Source={StaticResource vm},Path=CopyCommand}" CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Paste" Command="{Binding Source={StaticResource vm},Path=PasteCommand}" CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Cut" Command="{Binding Source={StaticResource vm},Path=MoveCommand}" CommandParameter="{Binding}"></MenuItem>
                                     <MenuItem Header="Delete" Command="{Binding Source={StaticResource vm},Path=DeleteCommand}" CommandParameter="{Binding}"></MenuItem>
-                                    <MenuItem Header="Rename" Command="{Binding RenameCommand}" CommandParameter="{Binding}"></MenuItem>
-                                <MenuItem Header="Atributes" Command="{Binding AtributesCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    <MenuItem Header="Rename" Command="{Binding Source={StaticResource vm},Path=RenameCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    <MenuItem Header="Atributes" Command="{Binding Source={StaticResource vm},Path=AtributesCommand}" CommandParameter="{Binding}"></MenuItem>
                                     <MenuItem >
                                         <MenuItem.Header>
                                               <WrapPanel>
@@ -93,16 +93,16 @@
                                         </MenuItem.Header>
                                     </MenuItem>
                                 <MenuItem Header="Encrypt">
-                                    <MenuItem Header="TripleDES" Command="{Binding TripleDESEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="Rijndael" Command="{Binding RijndaelEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="RC2" Command="{Binding RC2EncryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="RSA" Command="{Binding RSAEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="TripleDES" Command="{Binding Source={StaticResource vm},Path=TripleDESEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="Rijndael" Command="{Binding Source={StaticResource vm},Path=RijndaelEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RC2" Command="{Binding Source={StaticResource vm},Path=RC2EncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RSA" Command="{Binding Source={StaticResource vm},Path=RSAEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
                                     </MenuItem>
                                     <MenuItem Header="Decrypt">
-                                        <MenuItem Header="TripleDES" Command="{Binding TripleDESDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="Rijndael" Command="{Binding RijndaelDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="RC2" Command="{Binding RC2DecryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="RSA" Command="{Binding RSADecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="TripleDES" Command="{Binding Source={StaticResource vm},Path=TripleDESDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="Rijndael" Command="{Binding Source={StaticResource vm},Path=RijndaelDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RC2" Command="{Binding Source={StaticResource vm},Path=RC2DecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RSA" Command="{Binding Source={StaticResource vm},Path=RSADecryptCommand}" CommandParameter="{Binding}"></MenuItem>
                                     </MenuItem>
 
                                 </ContextMenu>
