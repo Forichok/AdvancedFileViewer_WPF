@@ -18,7 +18,10 @@
          <DynamicResource ResourceKey="vm"></DynamicResource>
     </Window.DataContext>
 
-    
+    <Window.InputBindings>
+        <KeyBinding Gesture="Ctrl+z" Command="{Binding ResetCommand}"/>
+        <KeyBinding Gesture="Enter" Command="{Binding ResetCommand}"/>
+    </Window.InputBindings>    
 
     <Grid>
 <Grid.RowDefinitions>
@@ -27,11 +30,12 @@
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition Width="1.5*"></ColumnDefinition>
             <ColumnDefinition Width="3*"></ColumnDefinition>
+            <ColumnDefinition Width="2*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
 
-        <Menu VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="2" Grid.Column="0"
+        <Menu VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="3" Grid.Column="0"
               Grid.Row="0">
             <MenuItem Header="File">
                 <MenuItem Header="Select Folder" Command="{Binding SelectRootCommand}"/>
@@ -54,7 +58,7 @@
         <Grid Row="1" Column="0">
             <StackPanel VerticalAlignment="Bottom">
                 <Border Margin="10"  Background="Aquamarine">
-                    <TextBox   Text="{Binding ElementName=window, Path=DataContext.Test}"></TextBox>
+                    <TextBox   Text="{Binding UserName}"></TextBox>
                 </Border>
                 <Border Margin="10"  Background="Aquamarine">
                     <PasswordBox 
@@ -88,7 +92,7 @@
                                         <MenuItem.Header>
                                               <WrapPanel>
                                                   <TextBlock Text="Spy"></TextBlock>
-                                                  <ToggleButton Margin="10,0,0,0" IsChecked="{Binding IsSpyOn}"></ToggleButton>
+                                                <ToggleButton Margin="10,0,0,0" Command="{Binding Source={StaticResource vm},Path=SpyOnCommand}" CommandParameter="{Binding}"></ToggleButton>
                                               </WrapPanel>
                                         </MenuItem.Header>
                                     </MenuItem>
@@ -127,6 +131,10 @@
                 </TransformGroup>
             </TreeView.RenderTransform>
         </TreeView>
+        </Grid>
+        
+        <Grid Grid.Column="2" Grid.Row="1">
+            <ListView ItemsSource="{Binding Logs}"></ListView>
         </Grid>
         
 

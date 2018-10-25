@@ -17,27 +17,27 @@ namespace AdvancedFileViewer_WPF.ViewModels
     class MainViewModel : ViewModelBase
     {
         public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
-        private FileSystemObjectInfo bufferObjectInfo;
+        private FileSystemObjectInfo _bufferObjectInfo;
         private bool isMovingOn;
-        private static Queue<string> _logs = new Queue<string>();
-        public string UserName { get; set; } = "Username";
-        public string Test { get; set; } = "Test";
-        public string Password { get; set; }
-        public Users CurrentUser { get; set; }
-
-        public static Queue<string> Logs
+        private List<string> _logs = new List<string>();
+        
+        public List<string> Logs
         {
             get
             {
-                while (_logs.Count > 10)
+                while (_logs.Count>10)
                 {
-                    _logs.Dequeue();
+                    _logs.RemoveAt(0);
                 }
-
                 return _logs;
             }
-            set => _logs = value;
         }
+
+        public string UserName { get; set; } = "admin";
+        public string Test { get; set; } = "Test";
+        public string Password { get; set; } = "";
+        public Users CurrentUser { get; set; }
+
 
         public static bool isKeyRequired;
         public bool IsKeyInputRequired { get =>isKeyRequired; set => isKeyRequired=value;
@@ -45,8 +45,11 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
         public MainViewModel()
         {
-            var curDir = Environment.GetLogicalDrives().Select(i => new FileSystemObjectInfo(new DirectoryInfo(i)));
-            CurrentDirectories = new ObservableCollection<FileSystemObjectInfo>(curDir);
+            
+            CurrentUser = DbHandler.GetUserInfo(UserName, Password);
+            _logs = new List<string>(CurrentUser.Logs.Split(';'));
+            
+            CurrentDirectories = new ObservableCollection<FileSystemObjectInfo>(new List<FileSystemObjectInfo>(){new FileSystemObjectInfo(new DirectoryInfo(CurrentUser.CurrentDirectory))});
         }
 
 
@@ -64,7 +67,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                         CurrentDirectories.Clear();
                         CurrentDirectories.Add(new FileSystemObjectInfo(new DirectoryInfo(fbd.SelectedPath)));
                         CurrentUser.CurrentDirectory = fbd.SelectedPath;
-                        DbHandler.UpdateUserInfo(CurrentUser);
+                        DbHandler.AddOrUpdateUserInfo(CurrentUser);
                         RaisePropertyChanged("Commands");
                     }
                 });
@@ -104,9 +107,11 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     FileSystemObjectInfo.user = User;
                     if (User==null) return;
                     CurrentUser = User;
+                    _logs = new List<string>(User.Logs.Split(';'));
                     var curDir =  new FileSystemObjectInfo(new DirectoryInfo(User.CurrentDirectory));
                     CurrentDirectories.Clear();
                     CurrentDirectories.Add(curDir);
+                    RaisePropertyChanged("Logs");
                 });
             }
         }
@@ -139,27 +144,93 @@ namespace AdvancedFileViewer_WPF.ViewModels
             }
         }
 
-        #region FileCommands
-
-        public ICommand DeleteCommand
+        public ICommand ResetCommand
         {
             get
             {
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
-                    if (obj.FileSystemInfo.Extension != "")
+                    var commandLog = _logs.LastOrDefault();
+
+                    if (commandLog == null) return;
+
+                    if (commandLog.Contains("has been renamed to"))
                     {
-                        File.Delete(obj.FileSystemInfo.FullName);
+                        commandLog = commandLog.Replace("has been renamed to", "");
+
+                        var FullNames = commandLog.Split(new []{' '},StringSplitOptions.RemoveEmptyEntries);
+
+
+                        var oldPath = FullNames.LastOrDefault();
+
+                        var newPath = FullNames.FirstOrDefault();
+
+                        if (File.Exists(oldPath))
+                        {
+                            File.Move(oldPath, newPath);
+                            
+                        }
+                        else if(Directory.Exists(oldPath))
+                        {
+                            CopyDirectory(oldPath, newPath);
+                            Directory.Delete(oldPath, true);
+                            
+                        }
+                        
+                        CurrentDirectories.First().UpdateAll();
+                    }
+                });
+            }
+        }
+
+        #region FileCommands
+
+        public ICommand SpyOnCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
+                {
+                    if (CurrentUser != null)
+                    {
+                        if (!obj.IsSpyOn)
+                        {
+                            if(!CurrentUser.SpyingDirectories.Contains(obj.FileSystemInfo.FullName))
+                            CurrentUser.SpyingDirectories += " " + obj.FileSystemInfo.FullName;
+                        }
+                        else
+                        {
+                            CurrentUser.SpyingDirectories =
+                                CurrentUser.SpyingDirectories.Replace(" " + obj.FileSystemInfo.FullName, "");
+                        }
+                    }
+
+                    DbHandler.AddOrUpdateUserInfo(CurrentUser);
+                    obj.IsSpyOn = !obj.IsSpyOn; 
+                    
+                });
+            }
+        }
+
+        public ICommand DeleteCommand
+        {
+            get
+            {
+                return new DelegateCommand<FileSystemObjectInfo>((file) =>
+                {
+                    if (file.FileSystemInfo.Extension != "")
+                    {
+                        File.Delete(file.FileSystemInfo.FullName);
                     }
                     else
                     {
-                        Directory.Delete(obj.FileSystemInfo.FullName, true);
+                        Directory.Delete(file.FileSystemInfo.FullName, true);
                     }
-                    _logs.Enqueue($"{obj.FileSystemInfo.FullName} has been deleted");
-                    var parent = obj.Parent;
-                    parent.Children.Remove(obj);
-                    obj.RemoveDummy();
-                    parent.UpdateTree();
+                    UpdateLogs($"{file.FileSystemInfo.FullName} has been deleted");
+                    var parent = file.Parent;
+                    parent.Children.Remove(file);
+                    file.RemoveDummy();
+                    parent.UpdateParentDirectory();
                 });
             }
         }
@@ -170,8 +241,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
             {
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
-                    _logs.Enqueue($"{obj.FileSystemInfo.FullName} has been copied");
-                    bufferObjectInfo = obj;
+                    _bufferObjectInfo = obj;
                 });
             }
         }
@@ -184,43 +254,44 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 {
                     try
                     {
-                        if (bufferObjectInfo != null)
+                        if (_bufferObjectInfo != null)
                         {
                             if (obj.FileSystemInfo.Extension == "")
                             {
                                 if(isMovingOn)
-                                    _logs.Enqueue($"{bufferObjectInfo.FileSystemInfo.FullName} has been moved to {obj.FileSystemInfo.FullName}");
+                                    UpdateLogs($"{_bufferObjectInfo.FileSystemInfo.FullName} has been moved to {obj.FileSystemInfo.FullName}");
                                 else
-                                    _logs.Enqueue($"{bufferObjectInfo.FileSystemInfo.FullName} has been inserted into {obj.FileSystemInfo.FullName}");
+                                    UpdateLogs($"{_bufferObjectInfo.FileSystemInfo.FullName} has been inserted into {obj.FileSystemInfo.FullName}");
 
-                                var newPath = obj.FileSystemInfo.FullName + "\\" + bufferObjectInfo.FileSystemInfo.Name;
-                                if (bufferObjectInfo.FileSystemInfo.Extension != "")
+                                var newPath = obj.FileSystemInfo.FullName + "\\" + _bufferObjectInfo.FileSystemInfo.Name;
+                                if (_bufferObjectInfo.FileSystemInfo.Extension != "")
                                 {
-                                    File.Copy(bufferObjectInfo.FileSystemInfo.FullName, newPath);
+                                    File.Copy(_bufferObjectInfo.FileSystemInfo.FullName, newPath);
                                     if (isMovingOn)
                                     {
-                                        File.Delete(bufferObjectInfo.FileSystemInfo.FullName);
-                                        bufferObjectInfo.Parent.Children.Remove(bufferObjectInfo);
-                                        bufferObjectInfo.UpdateTree();
-                                        bufferObjectInfo = null;
+                                        File.Delete(_bufferObjectInfo.FileSystemInfo.FullName);
+                                        _bufferObjectInfo.Parent.Children.Remove(_bufferObjectInfo);
+                                        _bufferObjectInfo.UpdateParentDirectory();
+                                        _bufferObjectInfo = null;
                                         isMovingOn = false;
                                     }
                                 }
                                 else
                                 {
-                                    CopyDirectory(bufferObjectInfo.FileSystemInfo.FullName, newPath);
+
+                                    CopyDirectory(_bufferObjectInfo.FileSystemInfo.FullName, newPath);
                                     if (isMovingOn)
                                     {
-                                        File.Delete(bufferObjectInfo.FileSystemInfo.FullName);
-                                        bufferObjectInfo.Parent.Children.Remove(bufferObjectInfo);
-                                        bufferObjectInfo.UpdateTree();
-                                        bufferObjectInfo = null;
+                                        Directory.Delete(_bufferObjectInfo.FileSystemInfo.FullName);
+                                        _bufferObjectInfo.Parent.Children.Remove(_bufferObjectInfo);
+                                        _bufferObjectInfo.UpdateParentDirectory();
+                                        _bufferObjectInfo = null;
                                         isMovingOn = false;
                                     }
                                 }
                             }
-
-                            obj.UpdateTree();
+                            _bufferObjectInfo.UpdateParentDirectory();
+                            obj.UpdateParentDirectory();
                         }
                     }
                     catch (Exception e)
@@ -238,7 +309,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
                     isMovingOn = true;
-                    bufferObjectInfo = obj;
+                    _bufferObjectInfo = obj;
                 });
             }
         }
@@ -269,8 +340,8 @@ namespace AdvancedFileViewer_WPF.ViewModels
                         obj.Parent.Children.Add(new FileSystemObjectInfo(new DirectoryInfo(newPath)));
                     }
                     obj.Parent.Children.Remove(obj);
-                    _logs.Enqueue($"{oldPath} has been renamed to {newPath}");
-                    obj.UpdateTree();
+                    UpdateLogs($"{oldPath} has been renamed to {newPath}");
+                    obj.UpdateParentDirectory();
                 });
             }
         }
@@ -282,7 +353,6 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
                     MessageBox.Show(obj.FileSystemInfo.Attributes.ToString());
-                    _logs.Enqueue($"{obj.FileSystemInfo.FullName}  atributes has been showed");
                 });
             }
         }
@@ -421,8 +491,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
         #endregion
 
         #region Helper Methods
-
-        #region Helper methods
+        
 
 
         private static void CopyDirectory(string SourcePath, string DestinationPath)
@@ -474,7 +543,15 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 writer.Write(DecryptFunc.Invoke(info, Crypto.Decryptkey));
             }
 
-            _logs.Enqueue($"{path} has beed {DecryptFunc.Method.Name}");
+            UpdateLogs($"{path} has beed {DecryptFunc.Method.Name}");
+        }
+
+        private void UpdateLogs(string log)
+        {
+            _logs.Add(log);
+            CurrentUser.Logs=String.Join("; ",Logs);
+            DbHandler.AddOrUpdateUserInfo(CurrentUser);
+            RaisePropertyChanged("Logs");
         }
 
         private static string GetStringFromDialog()
@@ -488,11 +565,10 @@ namespace AdvancedFileViewer_WPF.ViewModels
             }
             return result;
         }
-
         #endregion
 
 
-        #endregion
+        
 
     }
 }

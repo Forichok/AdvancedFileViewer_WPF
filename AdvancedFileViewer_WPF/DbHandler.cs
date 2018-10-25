@@ -22,32 +22,12 @@ namespace AdvancedFileViewer_WPF
             }
         }
 
-        public static void UpdateUserInfo(Users newUserInfo)
+        public static void AddOrUpdateUserInfo(Users newUserInfo)
         {
             using (var context = new UsersContext())
             {
-                var user = new Users
-                {
-                    Name = newUserInfo.Name,
-                    CurrentDirectory = newUserInfo.CurrentDirectory,
-                    Password = newUserInfo.Password
-                    
-                };
-
-
-                if (user != null)
-                {
-                    user.CurrentDirectory = newUserInfo.CurrentDirectory;
-
-
-                    //_context.Entry(foundUser).State = EntityState.Modified;
- //                   context.Users.Attach(foundUser);
-                    
-                    context.Users.AddOrUpdate(user);
-                   // context.Entry(user).State = EntityState.Modified;  
-                    context.SaveChanges();
-                    //db.Entry(payment).State = EntityState.Modified;
-                }
+                context.Users.AddOrUpdate(newUserInfo);
+                context.SaveChanges();
             }
         }
     }

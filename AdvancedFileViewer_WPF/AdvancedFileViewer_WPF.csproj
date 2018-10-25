@@ -144,6 +144,7 @@
     <Compile Include="PasswordHelper.cs" />
     <Compile Include="TreeView\Crypto.cs" />
     <Compile Include="TreeView\FileManager.cs" />
+    <Compile Include="TreeView\FileSystemObjectHandler.cs" />
     <Compile Include="TreeView\FileSystemObjectInfo.cs" />
     <Compile Include="InputDialog.xaml.cs">
       <DependentUpon>InputDialog.xaml</DependentUpon>

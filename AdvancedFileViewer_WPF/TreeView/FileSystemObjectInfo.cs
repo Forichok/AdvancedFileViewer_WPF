@@ -74,27 +74,29 @@ namespace AdvancedFileViewer_WPF.TreeView
 
         #region Methods
 
-        public void UpdateTree()
+        public void UpdateParentDirectory()
         {
-            var tmpNode = this.Parent;
+
+//            var tmpNode = Parent ?? this;
 
 
-        tmpNode.ExploreFiles();
-        tmpNode.ExploreDirectories();
+
+            Parent?.ExploreDirectories();
+            Parent?.ExploreFiles();
             RaisePropertyChanged("Children");
-           // UpdateChildren(tmpNode);
+            //UpdateChildren(this);
 
         }
 
-        private void UpdateChildren(FileSystemObjectInfo fileSystemObjectInfo)
+        public void UpdateAll()
         {
-            if (fileSystemObjectInfo.Children != null)
-                foreach (var child in fileSystemObjectInfo.Children)
+            if (Children != null)
+                foreach (var child in Children)
                 {
                     child.ExploreDirectories();
                     child.ExploreFiles();
                     RaisePropertyChanged("Children");
-                    Task.Factory.StartNew(()=>UpdateChildren(child));
+                    Task.Factory.StartNew(()=>child.UpdateAll());
                 }
         }
 
@@ -126,7 +128,8 @@ namespace AdvancedFileViewer_WPF.TreeView
             {
                 if (!Drive.IsReady) return;
             }
-                var tmp = new FileSystemObjectInfo[0];
+
+            var tmp = new FileSystemObjectInfo[0];
             if (Children != null)
             {
                 tmp = new FileSystemObjectInfo[Children.Count];
@@ -137,10 +140,10 @@ namespace AdvancedFileViewer_WPF.TreeView
 
             if (FileSystemInfo is DirectoryInfo)
             {
-                DirectoryInfo[] directories=new DirectoryInfo[0];
+                DirectoryInfo[] directories = new DirectoryInfo[0];
                 try
                 {
-                    directories = ((DirectoryInfo) FileSystemInfo).GetDirectories("*",SearchOption.TopDirectoryOnly);
+                    directories = ((DirectoryInfo) FileSystemInfo).GetDirectories("*", SearchOption.TopDirectoryOnly);
                 }
                 catch (Exception e)
                 {
@@ -148,38 +151,37 @@ namespace AdvancedFileViewer_WPF.TreeView
                 }
 
                 foreach (var directory in directories.OrderBy(d => d.Name))
+                {
+                    if (!Equals((directory.Attributes & FileAttributes.System), FileAttributes.System) &&
+                        !Equals((directory.Attributes & FileAttributes.Hidden), FileAttributes.Hidden))
                     {
-                        if (!Equals((directory.Attributes & FileAttributes.System), FileAttributes.System) &&
-                            !Equals((directory.Attributes & FileAttributes.Hidden), FileAttributes.Hidden))
+                        var newDirectory = new FileSystemObjectInfo(directory);
+                        var directoriesInfo = new List<string>();
+                        foreach (var dir in Children)
                         {
-                            var newDirectory = new FileSystemObjectInfo(directory);
-                            var directoriesInfo = new List<string>();
-                            foreach (var dir in tmpDirectories)
-                            {
-                                if (dir.FileSystemInfo == null) continue;
-                                var curDirectoryPath = dir.FileSystemInfo.FullName;
+                            if (dir.FileSystemInfo == null) continue;
+                            var curDirectoryPath = dir.FileSystemInfo.FullName;
 
-                                directoriesInfo.Add(curDirectoryPath);
+                            directoriesInfo.Add(curDirectoryPath);
 
-                                if (!(Directory.Exists(curDirectoryPath)||File.Exists(curDirectoryPath)))
-                                {
-                                    Application.Current.Dispatcher.Invoke(() => dir.Parent.Children.Remove(dir));
-                                    directoriesInfo.Remove(dir.FileSystemInfo.FullName);
-                            }
-                            }
-                            
-                            if (!directoriesInfo.Contains(newDirectory.FileSystemInfo.FullName))
+                            if (!(Directory.Exists(curDirectoryPath) || File.Exists(curDirectoryPath)))
                             {
-                                newDirectory.Parent = this;
-                                tmpDirectories.Add(newDirectory);
+                                Application.Current.Dispatcher.Invoke(() => tmpDirectories.Remove(dir));
+                                directoriesInfo.Remove(dir.FileSystemInfo.FullName);
                             }
                         }
+
+                        if (!directoriesInfo.Contains(newDirectory.FileSystemInfo.FullName))
+                        {
+                            newDirectory.Parent = this;
+                            tmpDirectories.Add(newDirectory);
+                        }
                     }
-                Application.Current.Dispatcher.Invoke(()=>Children=new ObservableCollection<FileSystemObjectInfo>(tmpDirectories));
+                }
+                Application.Current.Dispatcher.Invoke(() =>
+                    Children = new ObservableCollection<FileSystemObjectInfo>(tmpDirectories));
                 RaisePropertyChanged("Children");
             }
-            
-    
         }
 
         private void ExploreFiles()
@@ -211,7 +213,7 @@ namespace AdvancedFileViewer_WPF.TreeView
 
                         var newFile = new FileSystemObjectInfo(file);
                         var filesPaths = new List<string>();
-                        foreach (var fileObj in tmpFiles)
+                        foreach (var fileObj in Children)
                         {
                             if (fileObj.FileSystemInfo == null) continue;
 
@@ -220,7 +222,7 @@ namespace AdvancedFileViewer_WPF.TreeView
                             filesPaths.Add(curDirectoryPath);
                             if (!(Directory.Exists(curDirectoryPath) || File.Exists(curDirectoryPath)))
                             {
-                                Application.Current.Dispatcher.Invoke(()=>fileObj.Parent.Children.Remove(fileObj));
+                                tmpFiles.Remove(fileObj);
                                 filesPaths.Remove(fileObj.FileSystemInfo.FullName);
                             }
                         }
