@@ -16,12 +16,14 @@ namespace AdvancedFileViewer_WPF.ViewModels
 {
     class MainViewModel : ViewModelBase
     {
+        private int commandBufferSize = 10;
         public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
         private FileSystemObjectInfo _bufferObjectInfo;
-        private bool isMovingOn;
-        private List<string> _logs = new List<string>();
-        
-        public List<string> Logs
+        private bool _isMovingOn;
+        private ObservableCollection<string> _logs;
+
+
+        public ObservableCollection<string> Logs
         {
             get
             {
@@ -31,23 +33,22 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 }
                 return _logs;
             }
+
+            set => _logs = value;
         }
 
         public string UserName { get; set; } = "admin";
         public string Test { get; set; } = "Test";
         public string Password { get; set; } = "";
         public Users CurrentUser { get; set; }
-
-
-        public static bool isKeyRequired;
-        public bool IsKeyInputRequired { get =>isKeyRequired; set => isKeyRequired=value;
-        }
+        public bool IsKeyRequired { get; set; }
+        
 
         public MainViewModel()
         {
             
             CurrentUser = DbHandler.GetUserInfo(UserName, Password);
-            _logs = new List<string>(CurrentUser.Logs.Split(';'));
+            _logs = new ObservableCollection<string>(CurrentUser.Logs.Split(';'));
             
             CurrentDirectories = new ObservableCollection<FileSystemObjectInfo>(new List<FileSystemObjectInfo>(){new FileSystemObjectInfo(new DirectoryInfo(CurrentUser.CurrentDirectory))});
         }
@@ -104,10 +105,9 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 return new DelegateCommand(() =>
                 {
                     var User = DbHandler.GetUserInfo(UserName, Password);
-                    FileSystemObjectInfo.user = User;
                     if (User==null) return;
                     CurrentUser = User;
-                    _logs = new List<string>(User.Logs.Split(';'));
+                    _logs = new ObservableCollection<string>(User.Logs.Split(';'));
                     var curDir =  new FileSystemObjectInfo(new DirectoryInfo(User.CurrentDirectory));
                     CurrentDirectories.Clear();
                     CurrentDirectories.Add(curDir);
@@ -150,16 +150,13 @@ namespace AdvancedFileViewer_WPF.ViewModels
             {
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
-                    var commandLog = _logs.LastOrDefault();
+                    var commandLog = Logs.LastOrDefault();
 
                     if (commandLog == null) return;
 
                     if (commandLog.Contains("has been renamed to"))
                     {
-                        commandLog = commandLog.Replace("has been renamed to", "");
-
-                        var FullNames = commandLog.Split(new []{' '},StringSplitOptions.RemoveEmptyEntries);
-
+                        var FullNames = commandLog.Split(new []{ "has been renamed to" },StringSplitOptions.RemoveEmptyEntries);
 
                         var oldPath = FullNames.LastOrDefault();
 
@@ -168,13 +165,11 @@ namespace AdvancedFileViewer_WPF.ViewModels
                         if (File.Exists(oldPath))
                         {
                             File.Move(oldPath, newPath);
-                            
                         }
                         else if(Directory.Exists(oldPath))
                         {
                             CopyDirectory(oldPath, newPath);
                             Directory.Delete(oldPath, true);
-                            
                         }
                         
                         CurrentDirectories.First().UpdateAll();
@@ -258,7 +253,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                         {
                             if (obj.FileSystemInfo.Extension == "")
                             {
-                                if(isMovingOn)
+                                if(_isMovingOn)
                                     UpdateLogs($"{_bufferObjectInfo.FileSystemInfo.FullName} has been moved to {obj.FileSystemInfo.FullName}");
                                 else
                                     UpdateLogs($"{_bufferObjectInfo.FileSystemInfo.FullName} has been inserted into {obj.FileSystemInfo.FullName}");
@@ -267,30 +262,28 @@ namespace AdvancedFileViewer_WPF.ViewModels
                                 if (_bufferObjectInfo.FileSystemInfo.Extension != "")
                                 {
                                     File.Copy(_bufferObjectInfo.FileSystemInfo.FullName, newPath);
-                                    if (isMovingOn)
+                                    if (_isMovingOn)
                                     {
                                         File.Delete(_bufferObjectInfo.FileSystemInfo.FullName);
                                         _bufferObjectInfo.Parent.Children.Remove(_bufferObjectInfo);
                                         _bufferObjectInfo.UpdateParentDirectory();
                                         _bufferObjectInfo = null;
-                                        isMovingOn = false;
+                                        _isMovingOn = false;
                                     }
                                 }
                                 else
                                 {
-
                                     CopyDirectory(_bufferObjectInfo.FileSystemInfo.FullName, newPath);
-                                    if (isMovingOn)
+                                    if (_isMovingOn)
                                     {
                                         Directory.Delete(_bufferObjectInfo.FileSystemInfo.FullName);
                                         _bufferObjectInfo.Parent.Children.Remove(_bufferObjectInfo);
                                         _bufferObjectInfo.UpdateParentDirectory();
                                         _bufferObjectInfo = null;
-                                        isMovingOn = false;
+                                        _isMovingOn = false;
                                     }
                                 }
                             }
-                            _bufferObjectInfo.UpdateParentDirectory();
                             obj.UpdateParentDirectory();
                         }
                     }
@@ -308,7 +301,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
             {
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
-                    isMovingOn = true;
+                    _isMovingOn = true;
                     _bufferObjectInfo = obj;
                 });
             }
@@ -492,8 +485,6 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
         #region Helper Methods
         
-
-
         private static void CopyDirectory(string SourcePath, string DestinationPath)
         {
             if (!Directory.Exists(DestinationPath))
@@ -513,13 +504,12 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 var newFilePath = newPath.Replace(SourcePath, DestinationPath);
                 File.Copy(newPath, newFilePath);
             }
-
         }
 
         private void StartCrypting(string path, Func<byte[], string, byte[]> DecryptFunc)
         {
             byte[] info;
-            if (MainViewModel.isKeyRequired)
+            if (IsKeyRequired)
             {
                 var inputDialog = new InputDialog("Please, input key:");
                 var result = string.Empty;

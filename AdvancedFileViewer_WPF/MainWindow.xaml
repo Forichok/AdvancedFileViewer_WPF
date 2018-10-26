@@ -134,7 +134,9 @@
         </Grid>
         
         <Grid Grid.Column="2" Grid.Row="1">
-            <ListView ItemsSource="{Binding Logs}"></ListView>
+            <ListBox ItemsSource="{Binding Logs, UpdateSourceTrigger=PropertyChanged}">
+
+            </ListBox>
         </Grid>
         
 

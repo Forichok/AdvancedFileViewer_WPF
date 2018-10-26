@@ -33,28 +33,12 @@ namespace AdvancedFileViewer_WPF.TreeView
             else if (info is FileInfo)
             {
                 ImageSource = FileManager.GetImageSource(info.FullName);
-            }
-
-            Children.CollectionChanged += CollectionChanged;
+            }            
             PropertyChanged += FileSystemObjectInfo_PropertyChanged;
-        }
-
-        private void CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            RaisePropertiesChanged("Children");
-        }
-
-        public FileSystemObjectInfo(DriveInfo drive)
-            : this(drive.RootDirectory)
-        {
-            Drive = drive;
         }
         #endregion
 
         #region Properties
-        
-
-        public static Users user { get; set; }
         public bool IsSpyOn { get; set; }
 
         public ObservableCollection<FileSystemObjectInfo> Children { get; set; }
@@ -63,38 +47,26 @@ namespace AdvancedFileViewer_WPF.TreeView
 
         public ImageSource ImageSource { get; set; }
 
-
         public bool IsExpanded { get; set; }
         
-        public FileSystemInfo FileSystemInfo { get; set; }
-
-        private DriveInfo Drive { get; set;}
+        public FileSystemInfo FileSystemInfo { get; set; }        
 
         #endregion
 
         #region Methods
 
         public void UpdateParentDirectory()
-        {
-
-//            var tmpNode = Parent ?? this;
-
-
-
-            Parent?.ExploreDirectories();
-            Parent?.ExploreFiles();
+        {            
+            Explore();
             RaisePropertyChanged("Children");
-            //UpdateChildren(this);
-
         }
 
         public void UpdateAll()
         {
             if (Children != null)
                 foreach (var child in Children)
-                {
-                    child.ExploreDirectories();
-                    child.ExploreFiles();
+                {                    
+                    child.Explore();
                     RaisePropertyChanged("Children");
                     Task.Factory.StartNew(()=>child.UpdateAll());
                 }
@@ -122,130 +94,53 @@ namespace AdvancedFileViewer_WPF.TreeView
             Children.Remove(GetDummy());
         }
 
-        private void ExploreDirectories()
+
+
+        private void Explore()
         {
-            if (!ReferenceEquals(Drive, null))
-            {
-                if (!Drive.IsReady) return;
-            }
-
-            var tmp = new FileSystemObjectInfo[0];
-            if (Children != null)
-            {
-                tmp = new FileSystemObjectInfo[Children.Count];
-                Children.CopyTo(tmp, 0);
-            }
-
-            var tmpDirectories = tmp.ToList();
-
             if (FileSystemInfo is DirectoryInfo)
             {
-                DirectoryInfo[] directories = new DirectoryInfo[0];
+                var systemObjects = new List<FileSystemInfo>();
                 try
                 {
-                    directories = ((DirectoryInfo) FileSystemInfo).GetDirectories("*", SearchOption.TopDirectoryOnly);
+                    systemObjects.AddRange(((DirectoryInfo)FileSystemInfo).GetDirectories().OrderBy(d => d.Name));
+                    systemObjects.AddRange((FileSystemInfo as DirectoryInfo).GetFiles().OrderBy(d => d.Name));
+
                 }
                 catch (Exception e)
                 {
 
                 }
+                
+                var filesPaths = Children.Select((i) =>i.FileSystemInfo?.FullName).ToList();
 
-                foreach (var directory in directories.OrderBy(d => d.Name))
+                foreach (var systemInfo in systemObjects)
                 {
-                    if (!Equals((directory.Attributes & FileAttributes.System), FileAttributes.System) &&
-                        !Equals((directory.Attributes & FileAttributes.Hidden), FileAttributes.Hidden))
+                    if (!Equals((systemInfo.Attributes & FileAttributes.System), FileAttributes.System) &&
+                        !Equals((systemInfo.Attributes & FileAttributes.Hidden), FileAttributes.Hidden))
                     {
-                        var newDirectory = new FileSystemObjectInfo(directory);
-                        var directoriesInfo = new List<string>();
-                        foreach (var dir in Children)
+                        if (!filesPaths.Contains(systemInfo.FullName))
                         {
-                            if (dir.FileSystemInfo == null) continue;
-                            var curDirectoryPath = dir.FileSystemInfo.FullName;
-
-                            directoriesInfo.Add(curDirectoryPath);
-
-                            if (!(Directory.Exists(curDirectoryPath) || File.Exists(curDirectoryPath)))
-                            {
-                                Application.Current.Dispatcher.Invoke(() => tmpDirectories.Remove(dir));
-                                directoriesInfo.Remove(dir.FileSystemInfo.FullName);
-                            }
-                        }
-
-                        if (!directoriesInfo.Contains(newDirectory.FileSystemInfo.FullName))
-                        {
-                            newDirectory.Parent = this;
-                            tmpDirectories.Add(newDirectory);
-                        }
-                    }
-                }
-                Application.Current.Dispatcher.Invoke(() =>
-                    Children = new ObservableCollection<FileSystemObjectInfo>(tmpDirectories));
-                RaisePropertyChanged("Children");
-            }
-        }
-
-        private void ExploreFiles()
-        {
-            if (!ReferenceEquals(Drive, null))
-            {
-                if (!Drive.IsReady) return;
-            }
-
-            if (FileSystemInfo is DirectoryInfo)
-            {
-                FileInfo[] files =new FileInfo[0];
-                try
-                {
-                    files = ((DirectoryInfo)FileSystemInfo).GetFiles();
-                }
-                catch (Exception e)
-                {
-                }
-                var tmp = new FileSystemObjectInfo[Children.Count];
-                Children.CopyTo(tmp, 0);
-                var tmpFiles = tmp.ToList();
-                foreach (var file in files.OrderBy(d => d.Name))
-                {
-                    if (!Equals((file.Attributes & FileAttributes.System), FileAttributes.System) &&
-                        !Equals((file.Attributes & FileAttributes.Hidden), FileAttributes.Hidden))
-                    {
-
-
-                        var newFile = new FileSystemObjectInfo(file);
-                        var filesPaths = new List<string>();
-                        foreach (var fileObj in Children)
-                        {
-                            if (fileObj.FileSystemInfo == null) continue;
-
-                            
-                            var curDirectoryPath = fileObj.FileSystemInfo.FullName;
-                            filesPaths.Add(curDirectoryPath);
-                            if (!(Directory.Exists(curDirectoryPath) || File.Exists(curDirectoryPath)))
-                            {
-                                tmpFiles.Remove(fileObj);
-                                filesPaths.Remove(fileObj.FileSystemInfo.FullName);
-                            }
-                        }
-
-                        if (!filesPaths.Contains(newFile.FileSystemInfo.FullName))
-                        {
+                            filesPaths.Add(systemInfo.FullName);
+                            var newFile = new FileSystemObjectInfo(systemInfo);
                             newFile.Parent = this;
-
-                            tmpFiles.Add(newFile);
+                            Application.Current.Dispatcher.Invoke(()=>Children.Add(newFile));
                         }
                     }
                 }
+                var childrenCopy = Children.Select((i) => i).ToList();
+                foreach (var info in childrenCopy)
+                {
+                    if (info.FileSystemInfo == null) continue;
 
-                Application.Current.Dispatcher.Invoke(() => Children = new ObservableCollection<FileSystemObjectInfo>(tmpFiles));
+                    if (!info.FileSystemInfo.Exists)
+                        Application.Current.Dispatcher.Invoke(()=>Children.Remove(info));
+                }
                 RaisePropertyChanged("Children");
             }
         }
-
-
-
 
         #endregion
-
 
         void FileSystemObjectInfo_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -259,8 +154,7 @@ namespace AdvancedFileViewer_WPF.TreeView
                         if (HasDummy())
                         {
                             RemoveDummy();
-                            ExploreDirectories();
-                            ExploreFiles();
+                            Explore();
                         }
                     }
                     else
@@ -270,8 +164,6 @@ namespace AdvancedFileViewer_WPF.TreeView
                 }
             }
         }
-
-
 
         private class DummyFileSystemObjectInfo : FileSystemObjectInfo
         {
