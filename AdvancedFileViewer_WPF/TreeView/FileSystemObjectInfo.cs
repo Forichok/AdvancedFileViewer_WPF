@@ -40,7 +40,6 @@ namespace AdvancedFileViewer_WPF.TreeView
 
         #region Properties
         public bool IsSpyOn { get; set; }
-
         public ObservableCollection<FileSystemObjectInfo> Children { get; set; }
 
         public FileSystemObjectInfo Parent { get; set; }
@@ -59,6 +58,22 @@ namespace AdvancedFileViewer_WPF.TreeView
         {            
             Explore();
             RaisePropertyChanged("Children");
+        }
+
+        public static void UpdateDirectory(FileSystemObjectInfo root,string path)
+        {
+            if(root.Children==null) return;
+            var copyChildren = new List<FileSystemObjectInfo>(root.Children);
+            foreach (var child in copyChildren)
+            {
+                if (child.FileSystemInfo == null) continue;
+                if (child.FileSystemInfo.FullName == path.Trim())
+                {
+                    child.Parent.Explore();
+                    child.Explore();
+                }
+                UpdateDirectory(child, path);
+            }
         }
 
         public void UpdateAll()
@@ -132,8 +147,7 @@ namespace AdvancedFileViewer_WPF.TreeView
                 foreach (var info in childrenCopy)
                 {
                     if (info.FileSystemInfo == null) continue;
-
-                    if (!info.FileSystemInfo.Exists)
+                    if (!(File.Exists(info.FileSystemInfo.FullName)||Directory.Exists(info.FileSystemInfo.FullName)))
                         Application.Current.Dispatcher.Invoke(()=>Children.Remove(info));
                 }
                 RaisePropertyChanged("Children");

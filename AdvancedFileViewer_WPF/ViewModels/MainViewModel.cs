@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -21,8 +22,6 @@ namespace AdvancedFileViewer_WPF.ViewModels
         private FileSystemObjectInfo _bufferObjectInfo;
         private bool _isMovingOn;
         private ObservableCollection<string> _logs;
-
-
         public ObservableCollection<string> Logs
         {
             get
@@ -36,7 +35,6 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
             set => _logs = value;
         }
-
         public string UserName { get; set; } = "admin";
         public string Test { get; set; } = "Test";
         public string Password { get; set; } = "";
@@ -46,10 +44,8 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
         public MainViewModel()
         {
-            
             CurrentUser = DbHandler.GetUserInfo(UserName, Password);
-            _logs = new ObservableCollection<string>(CurrentUser.Logs.Split(';'));
-            
+            _logs = new ObservableCollection<string>(CurrentUser.Logs.Split(';').Select((i) => i.Trim()));
             CurrentDirectories = new ObservableCollection<FileSystemObjectInfo>(new List<FileSystemObjectInfo>(){new FileSystemObjectInfo(new DirectoryInfo(CurrentUser.CurrentDirectory))});
         }
 
@@ -151,28 +147,82 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
                     var commandLog = Logs.LastOrDefault();
-
+                    Logs.Remove(Logs.LastOrDefault());
+                    string newPath = "";
+                    string oldPath = "";
                     if (commandLog == null) return;
-
-                    if (commandLog.Contains("has been renamed to"))
+                    try
                     {
-                        var FullNames = commandLog.Split(new []{ "has been renamed to" },StringSplitOptions.RemoveEmptyEntries);
-
-                        var oldPath = FullNames.LastOrDefault();
-
-                        var newPath = FullNames.FirstOrDefault();
-
-                        if (File.Exists(oldPath))
+                        if (commandLog.Contains("has been renamed to"))
                         {
-                            File.Move(oldPath, newPath);
+                            var FullNames = commandLog.Split(new[] {"has been renamed to"},
+                                StringSplitOptions.RemoveEmptyEntries);
+
+                            newPath = FullNames.LastOrDefault();
+
+                            oldPath = FullNames.FirstOrDefault();
+
+                            if (File.Exists(newPath))
+                            {
+                                File.Move(newPath, oldPath);
+                            }
+                            else if (Directory.Exists(newPath))
+                            {
+                                CopyDirectory(newPath, oldPath);
+                                Directory.Delete(newPath, true);
+                            }
                         }
-                        else if(Directory.Exists(oldPath))
+
+                        if (commandLog.Contains("has been moved to"))
                         {
-                            CopyDirectory(oldPath, newPath);
-                            Directory.Delete(oldPath, true);
+                            var fullNames = commandLog.Split(new[] {"has been moved to"},
+                                StringSplitOptions.RemoveEmptyEntries);
+
+                            var newDir = fullNames.LastOrDefault();
+                            oldPath = fullNames.FirstOrDefault();
+                            var fileName = oldPath.Substring(oldPath.LastIndexOf('\\'));
+
+                            newPath = newDir + fileName;
+                            if (File.Exists(newPath))
+                            {
+                                File.Move(newPath, oldPath);
+                                //       File.Delete(newPath);
+                            }
+                            else if (Directory.Exists(newPath))
+                            {
+                                Directory.Move(newPath, fileName);
+                                //   Directory.Delete(newPath, true);
+                            }
+
+                            oldPath = oldPath.Replace(fileName, "");
                         }
-                        
-                        CurrentDirectories.First().UpdateAll();
+
+                        if (commandLog.Contains("has been inserted into"))
+                        {
+                            var fullNames = commandLog.Split(new[] {"has been inserted into"},
+                                StringSplitOptions.RemoveEmptyEntries);
+
+                            var fileName = fullNames.FirstOrDefault();
+                            fileName = fileName.Substring(fileName.LastIndexOf('\\'));
+                            newPath = fullNames.LastOrDefault() + fileName;
+                            if (File.Exists(newPath))
+                            {
+                                File.Delete(newPath);
+                            }
+                            else if (Directory.Exists(newPath))
+                            {
+                                Directory.Delete(newPath, true);
+                            }
+                        }
+
+                        FileSystemObjectInfo.UpdateDirectory(CurrentDirectories.FirstOrDefault(), newPath);
+                        FileSystemObjectInfo.UpdateDirectory(CurrentDirectories.FirstOrDefault(), oldPath);
+                        CurrentUser.Logs = string.Join(" ; ", Logs);
+                        DbHandler.AddOrUpdateUserInfo(CurrentUser);
+                    }
+                    catch (Exception e)
+                    {
+
                     }
                 });
             }
@@ -406,6 +456,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 });
             }
         }
+
         public ICommand RC2EncryptCommand
         {
             get
@@ -538,7 +589,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
         private void UpdateLogs(string log)
         {
-            _logs.Add(log);
+            _logs.Add(log.Trim());
             CurrentUser.Logs=String.Join("; ",Logs);
             DbHandler.AddOrUpdateUserInfo(CurrentUser);
             RaisePropertyChanged("Logs");
@@ -556,10 +607,6 @@ namespace AdvancedFileViewer_WPF.ViewModels
             return result;
         }
         #endregion
-
-
-        
-
     }
 }
 
