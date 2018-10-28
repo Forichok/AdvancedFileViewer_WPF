@@ -1,13 +1,9 @@
 ﻿
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using DevExpress.Mvvm.Native;
 
 namespace AdvancedFileViewer_WPF
 {
@@ -94,14 +90,15 @@ namespace AdvancedFileViewer_WPF
         {
             PasswordBox passwordBox = sender as PasswordBox;
             SetIsUpdating(passwordBox, true);
-            SetPassword(passwordBox, passwordBox.Password);
+            SetPassword(passwordBox, passwordBox?.Password);
             SetIsUpdating(passwordBox, false);
         }
-        public static string Hash(string password)
+
+        private static string Hash(string password)
         {
             var bytes = new UTF8Encoding().GetBytes(password);
             byte[] hashBytes;
-            using (var algorithm = new System.Security.Cryptography.SHA512Managed())
+            using (var algorithm = new SHA512Managed())
             {
                 hashBytes = algorithm.ComputeHash(bytes);
             }

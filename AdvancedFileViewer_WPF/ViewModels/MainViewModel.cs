@@ -12,22 +12,42 @@ using System.Windows.Input;
 using AdvancedFileViewer_WPF.TreeView;
 using DevExpress.Mvvm;
 using Interpreter_WPF_3;
+using Timer = System.Windows.Forms.Timer;
 
 namespace AdvancedFileViewer_WPF.ViewModels
 {
     class MainViewModel : ViewModelBase
     {
-        private int commandBufferSize = 10;
+        public int CommandBufferSize { get; } = 5;
         public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
         private FileSystemObjectInfo _bufferObjectInfo;
         private bool _isMovingOn;
+        public Timer Timer { get; set; }
+        private List<FileSystemObjectInfo> _spyingSystemInfos=new List<FileSystemObjectInfo>();
         private ObservableCollection<string> _logs;
         public ObservableCollection<string> Logs
         {
             get
             {
-                while (_logs.Count>10)
+                while (_logs.Count>CommandBufferSize)
                 {
+                    var firstLog = _logs.FirstOrDefault();
+                    if (firstLog.Contains("has been deleted"))
+                    {
+                        var fullName = firstLog.Split(new[] { "has been deleted" }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                        
+                        var fileName = fullName.Substring(fullName.LastIndexOf('\\'));
+                        var backUpPath = Directory.GetCurrentDirectory() + '\\' + CurrentUser.Name + fileName;
+                        if (Directory.Exists(backUpPath))
+                        {
+                            Directory.Delete(backUpPath);
+                        }
+                        if (File.Exists(backUpPath))
+                        {
+                            File.Delete(backUpPath);
+                        }
+
+                    }
                     _logs.RemoveAt(0);
                 }
                 return _logs;
@@ -35,10 +55,9 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
             set => _logs = value;
         }
-        public string UserName { get; set; } = "admin";
-        public string Test { get; set; } = "Test";
+        public string UserName { get; set; } = "admin";        
         public string Password { get; set; } = "";
-        public Users CurrentUser { get; set; }
+        private Users CurrentUser { get; set; }
         public bool IsKeyRequired { get; set; }
         
 
@@ -47,6 +66,32 @@ namespace AdvancedFileViewer_WPF.ViewModels
             CurrentUser = DbHandler.GetUserInfo(UserName, Password);
             _logs = new ObservableCollection<string>(CurrentUser.Logs.Split(';').Select((i) => i.Trim()));
             CurrentDirectories = new ObservableCollection<FileSystemObjectInfo>(new List<FileSystemObjectInfo>(){new FileSystemObjectInfo(new DirectoryInfo(CurrentUser.CurrentDirectory))});
+            Timer = new Timer();
+            Timer.Tick += Timer_Tick;
+            Timer.Interval = 1000;
+            Timer.Start();
+        }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            foreach (var info in _spyingSystemInfos)
+            {
+                FileSystemInfo newInfo=null;
+                var path = info.FileSystemInfo.FullName;
+ 
+                    if(Directory.Exists(path))
+                    newInfo = new DirectoryInfo(path);
+                    if(File.Exists(path))
+                    newInfo = new FileInfo(path);
+
+
+
+                if (newInfo == null || info.FileSystemInfo.LastAccessTime != newInfo.LastAccessTime ||
+                    info.FileSystemInfo.LastWriteTime != newInfo.LastWriteTime) 
+                {
+                    info.isChanged = true;
+                }
+            }
         }
 
 
@@ -88,6 +133,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                         }
                         catch (Exception e)
                         {
+                            // ignored
                         }
                     }
 
@@ -215,8 +261,28 @@ namespace AdvancedFileViewer_WPF.ViewModels
                             }
                         }
 
-                        FileSystemObjectInfo.UpdateDirectory(CurrentDirectories.FirstOrDefault(), newPath);
+                        if (commandLog.Contains("has been deleted"))
+                        {
+                            var fullNames = commandLog.Split(new[] { "has been deleted" }, StringSplitOptions.RemoveEmptyEntries);
+
+                           
+                            oldPath = fullNames.FirstOrDefault();
+                            var fileName = oldPath.Substring(oldPath.LastIndexOf('\\'));
+                            var backUpPath = Directory.GetCurrentDirectory() + '\\' + CurrentUser.Name + fileName;
+                            if (Directory.Exists(backUpPath))
+                            {
+                                Directory.Move(backUpPath,oldPath);
+                            }
+                            if (File.Exists(backUpPath))
+                            {
+                                File.Move(backUpPath, oldPath);
+                            }
+
+                        }
+
                         FileSystemObjectInfo.UpdateDirectory(CurrentDirectories.FirstOrDefault(), oldPath);
+                        FileSystemObjectInfo.UpdateDirectory(CurrentDirectories.FirstOrDefault(), newPath);
+                        
                         CurrentUser.Logs = string.Join(" ; ", Logs);
                         DbHandler.AddOrUpdateUserInfo(CurrentUser);
                     }
@@ -240,11 +306,13 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     {
                         if (!obj.IsSpyOn)
                         {
-                            if(!CurrentUser.SpyingDirectories.Contains(obj.FileSystemInfo.FullName))
+                            _spyingSystemInfos.Add(obj);
+                            if (!CurrentUser.SpyingDirectories.Contains(obj.FileSystemInfo.FullName))
                             CurrentUser.SpyingDirectories += " " + obj.FileSystemInfo.FullName;
                         }
                         else
                         {
+                            _spyingSystemInfos.Remove(obj);
                             CurrentUser.SpyingDirectories =
                                 CurrentUser.SpyingDirectories.Replace(" " + obj.FileSystemInfo.FullName, "");
                         }
@@ -263,13 +331,17 @@ namespace AdvancedFileViewer_WPF.ViewModels
             {
                 return new DelegateCommand<FileSystemObjectInfo>((file) =>
                 {
+                    var backUpPath = Directory.GetCurrentDirectory() + '\\' + CurrentUser.Name;
+                    Directory.CreateDirectory(backUpPath);
+                    backUpPath += '\\' + file.FileSystemInfo.Name;
+                    
                     if (file.FileSystemInfo.Extension != "")
                     {
-                        File.Delete(file.FileSystemInfo.FullName);
+                        File.Move(file.FileSystemInfo.FullName,backUpPath);
                     }
                     else
                     {
-                        Directory.Delete(file.FileSystemInfo.FullName, true);
+                        Directory.Move(file.FileSystemInfo.FullName,backUpPath);
                     }
                     UpdateLogs($"{file.FileSystemInfo.FullName} has been deleted");
                     var parent = file.Parent;
@@ -363,7 +435,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
             {
                 return new DelegateCommand<FileSystemObjectInfo>((obj) =>
                 {
-                    var newName = GetStringFromDialog();
+                    var newName = GetStringFromDialog($"Please, input new filename for {obj.FileSystemInfo.Name}:");
                     if (newName.Trim().Length == 0) return;
 
                     var oldPath = obj.FileSystemInfo.FullName;
@@ -589,15 +661,17 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
         private void UpdateLogs(string log)
         {
-            _logs.Add(log.Trim());
+            log = log.Trim();
+            if(log.Length==0) return;
+            _logs.Add(log);
             CurrentUser.Logs=String.Join("; ",Logs);
             DbHandler.AddOrUpdateUserInfo(CurrentUser);
             RaisePropertyChanged("Logs");
         }
 
-        private static string GetStringFromDialog()
+        private static string GetStringFromDialog(string str)
         {
-            var inputDialog = new InputDialog("Please, input new filename:");
+            var inputDialog = new InputDialog(str);
             var result = string.Empty;
 
             if (inputDialog.ShowDialog() == true)

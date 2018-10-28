@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AdvancedFileViewer_WPF"
         xmlns:treeView="clr-namespace:AdvancedFileViewer_WPF.TreeView"
+        xmlns:converters="clr-namespace:AdvancedFileViewer_WPF.Converters"   
         xmlns:viewModels="clr-namespace:AdvancedFileViewer_WPF.ViewModels"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" Name="window">
@@ -12,26 +13,27 @@
 
     <Window.Resources>
         <viewModels:MainViewModel x:Key="vm"></viewModels:MainViewModel>
+        <converters:FileStatusConverter x:Key="FileStatusConverter"></converters:FileStatusConverter>
     </Window.Resources>
-    
+
     <Window.DataContext>
-         <DynamicResource ResourceKey="vm"></DynamicResource>
+        <DynamicResource ResourceKey="vm"></DynamicResource>
     </Window.DataContext>
 
     <Window.InputBindings>
         <KeyBinding Gesture="Ctrl+z" Command="{Binding ResetCommand}"/>
         <KeyBinding Gesture="Enter" Command="{Binding ResetCommand}"/>
-    </Window.InputBindings>    
+    </Window.InputBindings>
 
     <Grid>
-<Grid.RowDefinitions>
-    <RowDefinition Height="Auto"></RowDefinition>
-    <RowDefinition></RowDefinition>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"></RowDefinition>
+            <RowDefinition></RowDefinition>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150"></ColumnDefinition>
             <ColumnDefinition Width="1.5*"></ColumnDefinition>
-            <ColumnDefinition Width="2*"></ColumnDefinition>
             <ColumnDefinition Width="2*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
 
@@ -48,7 +50,16 @@
                     <MenuItem.Header>
                         <WrapPanel>
                             <TextBlock Text="Key Input Required"></TextBlock>
-                            <ToggleButton Margin="10,0,0,0" IsChecked="{Binding IsKeyInputRequired}"></ToggleButton>
+                            <ToggleButton Margin="10,0,0,0" IsChecked="{Binding IsKeyRequired}" RenderTransformOrigin="0.5,0.5">
+                                <ToggleButton.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform/>
+                                        <SkewTransform/>
+                                        <RotateTransform Angle="30.257"/>
+                                        <TranslateTransform/>
+                                    </TransformGroup>
+                                </ToggleButton.RenderTransform>
+                            </ToggleButton>
                         </WrapPanel>
                     </MenuItem.Header>
                 </MenuItem>
@@ -71,16 +82,18 @@
         </Grid>
 
         <Grid Row="1" Grid.Column="1" >
-        <TreeView Margin="1" x:Name="treeView" Grid.Column="0" 
+            <TreeView Margin="1" x:Name="treeView" Grid.Column="0" 
                   treeView:MouseDoubleClick.Command="{Binding TreeDoubleClickCommand}" 
                   treeView:MouseDoubleClick.CommandParameter="{Binding ElementName=treeView,Path=SelectedItem}" 
                   ItemsSource="{Binding CurrentDirectories}">
-            <TreeView.Resources>
-                <HierarchicalDataTemplate DataType="{x:Type treeView:FileSystemObjectInfo}" ItemsSource="{Binding Children, UpdateSourceTrigger=PropertyChanged}">
-                    <WrapPanel>
-                        <Image Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}" Margin="0,1,8,1"/>
-                        <TextBlock FontSize="9" FontFamily="Comic Sans MS" Text="{Binding FileSystemInfo.Name}"/>
-                        <WrapPanel.ContextMenu>
+                <TreeView.Resources>
+                    <HierarchicalDataTemplate DataType="{x:Type treeView:FileSystemObjectInfo}" ItemsSource="{Binding Children, UpdateSourceTrigger=PropertyChanged}">
+                        <WrapPanel>
+                            <Image Height="10" Width="10" Source="{Binding isChanged, Converter={StaticResource FileStatusConverter}}"/>
+                                <Image Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}" Margin="0,1,8,1"/>
+                            <TextBlock FontSize="9" FontFamily="Comic Sans MS" Text="{Binding FileSystemInfo.Name}"/>
+
+                            <WrapPanel.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Header="Copy" Command="{Binding Source={StaticResource vm},Path=CopyCommand}" CommandParameter="{Binding}"/>
                                     <MenuItem Header="Paste" Command="{Binding Source={StaticResource vm},Path=PasteCommand}" CommandParameter="{Binding}"/>
@@ -90,13 +103,13 @@
                                     <MenuItem Header="Atributes" Command="{Binding Source={StaticResource vm},Path=AtributesCommand}" CommandParameter="{Binding}"></MenuItem>
                                     <MenuItem >
                                         <MenuItem.Header>
-                                              <WrapPanel>
-                                                  <TextBlock Text="Spy"></TextBlock>
+                                            <WrapPanel>
+                                                <TextBlock Text="Spy"></TextBlock>
                                                 <ToggleButton Margin="10,0,0,0" Command="{Binding Source={StaticResource vm},Path=SpyOnCommand}" CommandParameter="{Binding}"></ToggleButton>
-                                              </WrapPanel>
+                                            </WrapPanel>
                                         </MenuItem.Header>
                                     </MenuItem>
-                                <MenuItem Header="Encrypt">
+                                    <MenuItem Header="Encrypt">
                                         <MenuItem Header="TripleDES" Command="{Binding Source={StaticResource vm},Path=TripleDESEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
                                         <MenuItem Header="Rijndael" Command="{Binding Source={StaticResource vm},Path=RijndaelEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
                                         <MenuItem Header="RC2" Command="{Binding Source={StaticResource vm},Path=RC2EncryptCommand}" CommandParameter="{Binding}"></MenuItem>
@@ -110,35 +123,35 @@
                                     </MenuItem>
 
                                 </ContextMenu>
-                        </WrapPanel.ContextMenu>
-                    </WrapPanel>
-                    
-                </HierarchicalDataTemplate>
-            </TreeView.Resources>
+                            </WrapPanel.ContextMenu>
+                        </WrapPanel>
 
-            <TreeView.ItemContainerStyle>
-                <Style TargetType="{x:Type TreeViewItem}">
-                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                    <Setter Property="KeyboardNavigation.AcceptsReturn" Value="True" />
-                </Style>
-            </TreeView.ItemContainerStyle>
+                    </HierarchicalDataTemplate>
+                </TreeView.Resources>
 
-            <TreeView.RenderTransform>
-                <TransformGroup>
-                    <ScaleTransform/>
-                    <SkewTransform/>
-                    <TranslateTransform/>
-                </TransformGroup>
-            </TreeView.RenderTransform>
-        </TreeView>
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="{x:Type TreeViewItem}">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                        <Setter Property="KeyboardNavigation.AcceptsReturn" Value="True" />
+                    </Style>
+                </TreeView.ItemContainerStyle>
+
+                <TreeView.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform/>
+                        <SkewTransform/>
+                        <TranslateTransform/>
+                    </TransformGroup>
+                </TreeView.RenderTransform>
+            </TreeView>
         </Grid>
-        
+
         <Grid Grid.Column="2" Grid.Row="1">
             <ListBox ItemsSource="{Binding Logs, UpdateSourceTrigger=PropertyChanged}">
 
             </ListBox>
         </Grid>
-        
+
 
     </Grid>
 </Window>

@@ -39,7 +39,11 @@ namespace AdvancedFileViewer_WPF.TreeView
         #endregion
 
         #region Properties
+
+        public bool isChanged { get; set; }
+
         public bool IsSpyOn { get; set; }
+
         public ObservableCollection<FileSystemObjectInfo> Children { get; set; }
 
         public FileSystemObjectInfo Parent { get; set; }
@@ -64,6 +68,7 @@ namespace AdvancedFileViewer_WPF.TreeView
         {
             if(root.Children==null) return;
             var copyChildren = new List<FileSystemObjectInfo>(root.Children);
+            root.Explore();
             foreach (var child in copyChildren)
             {
                 if (child.FileSystemInfo == null) continue;
@@ -72,7 +77,9 @@ namespace AdvancedFileViewer_WPF.TreeView
                     child.Parent.Explore();
                     child.Explore();
                 }
-                UpdateDirectory(child, path);
+
+                Task.Factory.StartNew(()=>UpdateDirectory(child, path));
+                //Application.Current.Dispatcher.Invoke(() => UpdateDirectory(child, path));
             }
         }
 
@@ -124,9 +131,9 @@ namespace AdvancedFileViewer_WPF.TreeView
                 }
                 catch (Exception e)
                 {
-
+                    // ignored
                 }
-                
+
                 var filesPaths = Children.Select((i) =>i.FileSystemInfo?.FullName).ToList();
 
                 foreach (var systemInfo in systemObjects)

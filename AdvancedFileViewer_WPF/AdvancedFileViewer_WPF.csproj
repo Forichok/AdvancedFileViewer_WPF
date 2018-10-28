@@ -124,6 +124,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="BinaryReaderExtension.cs" />
+    <Compile Include="Converters\FileStatusConverter.cs" />
     <Compile Include="DbHandler.cs" />
     <Compile Include="DbModel.Context.cs">
       <AutoGen>True</AutoGen>
@@ -223,6 +224,8 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Images\Change_Disabled.png" />
+    <Resource Include="Images\Change_Enabled.png" />
     <Content Include="DbModel.Context.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <DependentUpon>DbModel.edmx</DependentUpon>
