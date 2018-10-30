@@ -148,14 +148,6 @@
                         <Setter Property="KeyboardNavigation.AcceptsReturn" Value="True" />
                     </Style>
                 </TreeView.ItemContainerStyle>
-
-                <TreeView.RenderTransform>
-                    <TransformGroup>
-                        <ScaleTransform/>
-                        <SkewTransform/>
-                        <TranslateTransform/>
-                    </TransformGroup>
-                </TreeView.RenderTransform>
             </TreeView>
         </Grid>
 
