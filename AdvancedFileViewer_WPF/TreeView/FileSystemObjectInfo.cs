@@ -1,18 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Windows.Input;
 using System.Windows.Media;
-using AdvancedFileViewer_WPF.ViewModels;
 using DevExpress.Mvvm;
-using Interpreter_WPF_3;
 using Application = System.Windows.Application;
 
 
@@ -41,7 +34,7 @@ namespace AdvancedFileViewer_WPF.TreeView
 
         #region Properties
 
-        public bool IsModified { get; set; } = false;
+        public bool IsModified { get; set; }
 
         public bool IsSpyOn { get; set; }
 
