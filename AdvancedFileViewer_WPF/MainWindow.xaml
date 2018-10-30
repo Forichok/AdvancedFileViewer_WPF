@@ -7,17 +7,19 @@
         xmlns:treeView="clr-namespace:AdvancedFileViewer_WPF.TreeView"
         xmlns:converters="clr-namespace:AdvancedFileViewer_WPF.Converters"   
         xmlns:viewModels="clr-namespace:AdvancedFileViewer_WPF.ViewModels"
+        xmlns:cmd="clr-namespace:GalaSoft.MvvmLight.Command;assembly=GalaSoft.MvvmLight.Platform"
+        xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" Name="window">
 
 
     <Window.Resources>
-        <viewModels:MainViewModel x:Key="vm"></viewModels:MainViewModel>
+        <viewModels:MainViewModel x:Key="Vm" />
         <converters:FileStatusConverter x:Key="FileStatusConverter"></converters:FileStatusConverter>
     </Window.Resources>
 
     <Window.DataContext>
-        <DynamicResource ResourceKey="vm"></DynamicResource>
+        <DynamicResource ResourceKey="Vm"></DynamicResource>
     </Window.DataContext>
 
     <Window.InputBindings>
@@ -28,13 +30,14 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"></RowDefinition>
+            <RowDefinition Height="2*"></RowDefinition>
             <RowDefinition></RowDefinition>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="150"></ColumnDefinition>
-            <ColumnDefinition Width="1.5*"></ColumnDefinition>
-            <ColumnDefinition Width="2*"></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+
         </Grid.ColumnDefinitions>
 
         <Menu VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="3" Grid.Column="0"
@@ -63,10 +66,19 @@
                         </WrapPanel>
                     </MenuItem.Header>
                 </MenuItem>
+                <MenuItem>
+                    <MenuItem.Header>
+                    <WrapPanel>
+                        <TextBlock VerticalAlignment="Center" Text="Commands buffer: "></TextBlock>
+                        <TextBox VerticalAlignment="Center" Text="{Binding CommandBufferSize}"></TextBox>
+                    </WrapPanel>
+                    </MenuItem.Header>
+                </MenuItem>
             </MenuItem>
+
         </Menu>
 
-        <Grid Row="1" Column="0">
+        <Grid Row="2" Column="0">
             <StackPanel VerticalAlignment="Bottom">
                 <Border Margin="10"  Background="Aquamarine">
                     <TextBox   Text="{Binding UserName}"></TextBox>
@@ -89,44 +101,45 @@
                 <TreeView.Resources>
                     <HierarchicalDataTemplate DataType="{x:Type treeView:FileSystemObjectInfo}" ItemsSource="{Binding Children, UpdateSourceTrigger=PropertyChanged}">
                         <WrapPanel>
-                            <Image Height="10" Width="10" Source="{Binding isChanged, Converter={StaticResource FileStatusConverter}}"/>
+                            <Image Height="10" Width="10" Source="{Binding IsModified, Converter={StaticResource FileStatusConverter}}"/>
                                 <Image Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}" Margin="0,1,8,1"/>
                             <TextBlock FontSize="9" FontFamily="Comic Sans MS" Text="{Binding FileSystemInfo.Name}"/>
 
                             <WrapPanel.ContextMenu>
                                 <ContextMenu>
-                                    <MenuItem Header="Copy" Command="{Binding Source={StaticResource vm},Path=CopyCommand}" CommandParameter="{Binding}"/>
-                                    <MenuItem Header="Paste" Command="{Binding Source={StaticResource vm},Path=PasteCommand}" CommandParameter="{Binding}"/>
-                                    <MenuItem Header="Cut" Command="{Binding Source={StaticResource vm},Path=MoveCommand}" CommandParameter="{Binding}"></MenuItem>
-                                    <MenuItem Header="Delete" Command="{Binding Source={StaticResource vm},Path=DeleteCommand}" CommandParameter="{Binding}"></MenuItem>
-                                    <MenuItem Header="Rename" Command="{Binding Source={StaticResource vm},Path=RenameCommand}" CommandParameter="{Binding}"></MenuItem>
-                                    <MenuItem Header="Atributes" Command="{Binding Source={StaticResource vm},Path=AtributesCommand}" CommandParameter="{Binding}"></MenuItem>
+
+                                    <MenuItem Header="Copy" Command="{Binding Source={StaticResource Vm},Path=CopyCommand}" CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Paste" Command="{Binding Source={StaticResource Vm},Path=PasteCommand}" CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Cut" Command="{Binding Source={StaticResource Vm},Path=MoveCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    <MenuItem Header="Delete" Command="{Binding Source={StaticResource Vm},Path=DeleteCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    <MenuItem Header="Rename" Command="{Binding Source={StaticResource Vm},Path=RenameCommand}" CommandParameter="{Binding}"></MenuItem>
+                                    <MenuItem Header="Atributes" Command="{Binding Source={StaticResource Vm},Path=AtributesCommand}" CommandParameter="{Binding}"></MenuItem>
                                     <MenuItem >
                                         <MenuItem.Header>
                                             <WrapPanel>
                                                 <TextBlock Text="Spy"></TextBlock>
-                                                <ToggleButton Margin="10,0,0,0" Command="{Binding Source={StaticResource vm},Path=SpyOnCommand}" CommandParameter="{Binding}"></ToggleButton>
+                                                <ToggleButton IsChecked="{Binding IsSpyOn, UpdateSourceTrigger=PropertyChanged}" Margin="10,0,0,0" Command="{Binding Source={StaticResource Vm},Path=SpyOnCommand}" CommandParameter="{Binding}"></ToggleButton>
                                             </WrapPanel>
                                         </MenuItem.Header>
                                     </MenuItem>
                                     <MenuItem Header="Encrypt">
-                                        <MenuItem Header="TripleDES" Command="{Binding Source={StaticResource vm},Path=TripleDESEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="Rijndael" Command="{Binding Source={StaticResource vm},Path=RijndaelEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="RC2" Command="{Binding Source={StaticResource vm},Path=RC2EncryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="RSA" Command="{Binding Source={StaticResource vm},Path=RSAEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="TripleDES" Command="{Binding Source={StaticResource Vm},Path=TripleDESEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="Rijndael" Command="{Binding Source={StaticResource Vm},Path=RijndaelEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RC2" Command="{Binding Source={StaticResource Vm},Path=RC2EncryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RSA" Command="{Binding Source={StaticResource Vm},Path=RSAEncryptCommand}" CommandParameter="{Binding}"></MenuItem>
                                     </MenuItem>
                                     <MenuItem Header="Decrypt">
-                                        <MenuItem Header="TripleDES" Command="{Binding Source={StaticResource vm},Path=TripleDESDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="Rijndael" Command="{Binding Source={StaticResource vm},Path=RijndaelDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="RC2" Command="{Binding Source={StaticResource vm},Path=RC2DecryptCommand}" CommandParameter="{Binding}"></MenuItem>
-                                        <MenuItem Header="RSA" Command="{Binding Source={StaticResource vm},Path=RSADecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="TripleDES" Command="{Binding Source={StaticResource Vm},Path=TripleDESDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="Rijndael" Command="{Binding Source={StaticResource Vm},Path=RijndaelDecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RC2" Command="{Binding Source={StaticResource Vm},Path=RC2DecryptCommand}" CommandParameter="{Binding}"></MenuItem>
+                                        <MenuItem Header="RSA" Command="{Binding Source={StaticResource Vm},Path=RSADecryptCommand}" CommandParameter="{Binding}"></MenuItem>
                                     </MenuItem>
 
                                 </ContextMenu>
                             </WrapPanel.ContextMenu>
                         </WrapPanel>
-
                     </HierarchicalDataTemplate>
+
                 </TreeView.Resources>
 
                 <TreeView.ItemContainerStyle>
@@ -146,7 +159,7 @@
             </TreeView>
         </Grid>
 
-        <Grid Grid.Column="2" Grid.Row="1">
+        <Grid Grid.Column="1" Grid.Row="2">
             <ListBox ItemsSource="{Binding Logs, UpdateSourceTrigger=PropertyChanged}">
 
             </ListBox>
@@ -155,4 +168,10 @@
 
     </Grid>
 </Window>
+
+
+
+
+
+
 

@@ -18,12 +18,12 @@ namespace AdvancedFileViewer_WPF.ViewModels
 {
     class MainViewModel : ViewModelBase
     {
-        public int CommandBufferSize { get; } = 5;
+        public int CommandBufferSize { get; set; } = 3;
         public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
         private FileSystemObjectInfo _bufferObjectInfo;
         private bool _isMovingOn;
         public Timer Timer { get; set; }
-        private List<FileSystemObjectInfo> _spyingSystemInfos=new List<FileSystemObjectInfo>();
+        private readonly List<FileSystemObjectInfo> _spyingSystemInfos=new List<FileSystemObjectInfo>();
         private ObservableCollection<string> _logs;
         public ObservableCollection<string> Logs
         {
@@ -70,6 +70,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
             Timer.Tick += Timer_Tick;
             Timer.Interval = 1000;
             Timer.Start();
+            LoadSpying();
         }
 
         private void Timer_Tick(object sender, EventArgs e)
@@ -89,7 +90,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 if (newInfo == null || info.FileSystemInfo.LastAccessTime != newInfo.LastAccessTime ||
                     info.FileSystemInfo.LastWriteTime != newInfo.LastWriteTime) 
                 {
-                    info.isChanged = true;
+                    info.IsModified = true;
                 }
             }
         }
@@ -115,6 +116,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 });
             }
         }
+
         public ICommand ChangeKeyCommand
         {
             get
@@ -140,6 +142,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 });
             }
         }
+
         public ICommand LoginCommand
         {
             get
@@ -153,10 +156,12 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     var curDir =  new FileSystemObjectInfo(new DirectoryInfo(User.CurrentDirectory));
                     CurrentDirectories.Clear();
                     CurrentDirectories.Add(curDir);
+                    LoadSpying();
                     RaisePropertyChanged("Logs");
                 });
             }
         }
+
         public ICommand TreeDoubleClickCommand
         {
             get
@@ -175,6 +180,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 });
             }
         }
+
         public ICommand ExitCommand
         {
             get
@@ -304,23 +310,19 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 {
                     if (CurrentUser != null)
                     {
-                        if (!obj.IsSpyOn)
+                        if (obj.IsSpyOn)
                         {
+                            if(!_spyingSystemInfos.Contains(obj))
                             _spyingSystemInfos.Add(obj);
-                            if (!CurrentUser.SpyingDirectories.Contains(obj.FileSystemInfo.FullName))
-                            CurrentUser.SpyingDirectories += " " + obj.FileSystemInfo.FullName;
                         }
                         else
                         {
                             _spyingSystemInfos.Remove(obj);
-                            CurrentUser.SpyingDirectories =
-                                CurrentUser.SpyingDirectories.Replace(" " + obj.FileSystemInfo.FullName, "");
                         }
                     }
 
+                    CurrentUser.SpyingDirectories = string.Join(";", _spyingSystemInfos.Select((i)=>i.FileSystemInfo.FullName));
                     DbHandler.AddOrUpdateUserInfo(CurrentUser);
-                    obj.IsSpyOn = !obj.IsSpyOn; 
-                    
                 });
             }
         }
@@ -442,7 +444,8 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     var fileExtention = obj.FileSystemInfo.Extension;
                     newName += newName.EndsWith(fileExtention) || !newName.Contains('.') ? fileExtention : "";
                     var newPath = oldPath.Replace(obj.FileSystemInfo.Name, newName);
-
+                    try
+                    {
                     if (obj.FileSystemInfo.Extension != "")
                     {
                         File.Move(oldPath, newPath);
@@ -453,6 +456,12 @@ namespace AdvancedFileViewer_WPF.ViewModels
                         CopyDirectory(oldPath, newPath);
                         Directory.Delete(oldPath, true);
                         obj.Parent.Children.Add(new FileSystemObjectInfo(new DirectoryInfo(newPath)));
+                    }
+
+                    }
+                    catch (Exception e)
+                    {
+                        MessageBox.Show(@"File is already in use. \n Try again later.");
                     }
                     obj.Parent.Children.Remove(obj);
                     UpdateLogs($"{oldPath} has been renamed to {newPath}");
@@ -565,7 +574,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 {
                     if (obj.FileSystemInfo.Extension != "")
                     {
-                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RC2Encrypt);
+                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RSAEncrypt);
                     }
                 });
             }
@@ -580,7 +589,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     if (obj.FileSystemInfo.Extension != "")
                     {
 
-                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RC2Decrypt);
+                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RSADecrypt);
                     }
                 });
             }
@@ -589,8 +598,22 @@ namespace AdvancedFileViewer_WPF.ViewModels
         #endregion
 
         #endregion
-
+        
         #region Methods
+
+        private void LoadSpying()
+        {
+            var paths = CurrentUser.SpyingDirectories.Split(';');
+            foreach (var path in paths)
+            {
+                var info = FileSystemObjectInfo.UpdateSpying(CurrentDirectories.FirstOrDefault(), path);
+
+                if (info != null)
+                {
+                    _spyingSystemInfos.Add(info);
+                }
+            }
+        }
 
         private void OpenFile(FileSystemInfo file)
         {

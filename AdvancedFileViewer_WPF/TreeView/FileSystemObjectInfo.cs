@@ -5,6 +5,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -40,7 +41,7 @@ namespace AdvancedFileViewer_WPF.TreeView
 
         #region Properties
 
-        public bool isChanged { get; set; }
+        public bool IsModified { get; set; } = false;
 
         public bool IsSpyOn { get; set; }
 
@@ -77,21 +78,31 @@ namespace AdvancedFileViewer_WPF.TreeView
                     child.Parent.Explore();
                     child.Explore();
                 }
-
-                Task.Factory.StartNew(()=>UpdateDirectory(child, path));
-                //Application.Current.Dispatcher.Invoke(() => UpdateDirectory(child, path));
+                
+                //Task.Factory.StartNew(()=>UpdateDirectory(child, path));
+                Application.Current.Dispatcher.Invoke(() => UpdateDirectory(child, path));
             }
         }
 
-        public void UpdateAll()
+        public static FileSystemObjectInfo UpdateSpying(FileSystemObjectInfo root, string path)
         {
-            if (Children != null)
-                foreach (var child in Children)
-                {                    
-                    child.Explore();
-                    RaisePropertyChanged("Children");
-                    Task.Factory.StartNew(()=>child.UpdateAll());
+            if (root.Children == null) return null;
+            
+            root.Explore();
+            foreach (var child in root.Children)
+            {
+                if (child.FileSystemInfo == null) continue;
+                if (child.FileSystemInfo.FullName == path.Trim())
+                {
+                    child.IsSpyOn = true;
+                    return child;
                 }
+                
+                //Task.Factory.StartNew(() => UpdateSpying(child, path));
+
+                Application.Current.Dispatcher.Invoke(() => UpdateDirectory(child, path));
+            }
+            return null;
         }
 
         private void AddDummy()
@@ -115,8 +126,6 @@ namespace AdvancedFileViewer_WPF.TreeView
         {
             Children.Remove(GetDummy());
         }
-
-
 
         private void Explore()
         {
@@ -163,7 +172,7 @@ namespace AdvancedFileViewer_WPF.TreeView
 
         #endregion
 
-        void FileSystemObjectInfo_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void FileSystemObjectInfo_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (FileSystemInfo is DirectoryInfo)
             {
