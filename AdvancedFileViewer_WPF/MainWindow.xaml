@@ -16,6 +16,7 @@
     <Window.Resources>
         <viewModels:MainViewModel x:Key="Vm" />
         <converters:FileStatusConverter x:Key="FileStatusConverter"></converters:FileStatusConverter>
+        <converters:AuthorizationTypeConverter x:Key="AuthorizationTypeConverter"></converters:AuthorizationTypeConverter>
     </Window.Resources>
 
     <Window.DataContext>
@@ -30,18 +31,18 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"></RowDefinition>
-            <RowDefinition Height="2*"></RowDefinition>
-            <RowDefinition></RowDefinition>
+            <RowDefinition Height="49*"></RowDefinition>
+            <RowDefinition Height="26*"></RowDefinition>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="150"></ColumnDefinition>
+            <ColumnDefinition Width="200"></ColumnDefinition>
             <ColumnDefinition></ColumnDefinition>
 
         </Grid.ColumnDefinitions>
 
-        <Menu VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="3" Grid.Column="0"
-              Grid.Row="0">
+        <Menu VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="2" Grid.Column="0"
+              Grid.Row="0" Height="48" Margin="0,0,-0.444,0">
             <MenuItem Header="File">
                 <MenuItem Header="Select Folder" Command="{Binding SelectRootCommand}"/>
                 <Separator />
@@ -68,32 +69,34 @@
                 </MenuItem>
                 <MenuItem>
                     <MenuItem.Header>
-                    <WrapPanel>
-                        <TextBlock VerticalAlignment="Center" Text="Commands buffer: "></TextBlock>
-                        <TextBox VerticalAlignment="Center" Text="{Binding CommandBufferSize}"></TextBox>
-                    </WrapPanel>
+                        <WrapPanel>
+                            <TextBlock VerticalAlignment="Center" Text="Commands buffer: "></TextBlock>
+                            <TextBox VerticalAlignment="Center" Text="{Binding CommandBufferSize}"></TextBox>
+                        </WrapPanel>
                     </MenuItem.Header>
                 </MenuItem>
             </MenuItem>
 
         </Menu>
 
-        <Grid Row="2" Column="0">
+        <Grid Row="1" Column="0" RowSpan="3">
             <StackPanel VerticalAlignment="Bottom">
-                <Border Margin="10"  Background="Aquamarine">
-                    <TextBox   Text="{Binding UserName}"></TextBox>
+                <TextBlock  HorizontalAlignment="Center" TextWrapping="Wrap" Text="{Binding AuthorizationMessage}" FontSize="10" FontFamily="Franklin Gothic Demi" Foreground="DarkCyan"></TextBlock>
+                <Border Margin="5"  Background="Aquamarine" CornerRadius="10">
+                    <TextBox Margin="5,0,5,0" Text="{Binding UserName}"></TextBox>
                 </Border>
-                <Border Margin="10"  Background="Aquamarine">
-                    <PasswordBox 
+                <Border Margin="5"  Background="Aquamarine" CornerRadius="10">
+                    <PasswordBox Margin="5,0,5,0"
                              local:PasswordHelper.Attach="True" 
                              local:PasswordHelper.Password="{Binding Password,Mode=OneWayToSource, UpdateSourceTrigger=LostFocus}"
                   ></PasswordBox>
                 </Border>
-                <Button Content="Login" Margin="10" Command="{Binding LoginCommand}"></Button>
+                <Button  Content="{Binding IsNewUser,Converter={StaticResource AuthorizationTypeConverter},ConverterParameter=LoginButton, Mode=OneWay}" Margin="10" Command="{Binding LoginCommand}"></Button>
+                <Button  Content="{Binding IsNewUser,Converter={StaticResource AuthorizationTypeConverter},ConverterParameter=LoginLabel, Mode=OneWay}" Style="{StaticResource TextButton}" Command="{Binding ChangeAuthorizationCommand}"></Button>
             </StackPanel>
         </Grid>
 
-        <Grid Row="1" Grid.Column="1" >
+        <Grid Row="1" Column="1">
             <TreeView Margin="1" x:Name="treeView" Grid.Column="0" 
                   treeView:MouseDoubleClick.Command="{Binding TreeDoubleClickCommand}" 
                   treeView:MouseDoubleClick.CommandParameter="{Binding ElementName=treeView,Path=SelectedItem}" 
@@ -102,7 +105,7 @@
                     <HierarchicalDataTemplate DataType="{x:Type treeView:FileSystemObjectInfo}" ItemsSource="{Binding Children, UpdateSourceTrigger=PropertyChanged}">
                         <WrapPanel>
                             <Image Height="10" Width="10" Source="{Binding IsModified, Converter={StaticResource FileStatusConverter}}"/>
-                                <Image Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}" Margin="0,1,8,1"/>
+                            <Image Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}" Margin="0,1,8,1"/>
                             <TextBlock FontSize="9" FontFamily="Comic Sans MS" Text="{Binding FileSystemInfo.Name}"/>
 
                             <WrapPanel.ContextMenu>
@@ -151,10 +154,10 @@
             </TreeView>
         </Grid>
 
-        <Grid Grid.Column="1" Grid.Row="2">
-            <ListBox ItemsSource="{Binding Logs, UpdateSourceTrigger=PropertyChanged}">
+        <Grid Grid.Row="2" Column="1">
+            <ListView ItemsSource="{Binding Logs}">
 
-            </ListBox>
+            </ListView>
         </Grid>
 
 

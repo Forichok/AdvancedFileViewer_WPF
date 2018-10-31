@@ -124,6 +124,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="BinaryReaderExtension.cs" />
+    <Compile Include="Converters\AuthorizationTypeConverter.cs" />
     <Compile Include="Converters\FileStatusConverter.cs" />
     <Compile Include="DbHandler.cs" />
     <Compile Include="DbModel.Context.cs">
@@ -168,6 +169,10 @@
       <SubType>Code</SubType>
     </Compile>
     <Page Include="InputDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Styles\Buttons.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -216,9 +221,7 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Pages\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>

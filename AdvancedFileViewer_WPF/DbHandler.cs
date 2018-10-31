@@ -5,8 +5,6 @@ namespace AdvancedFileViewer_WPF
 {
     static class DbHandler
     {
-        //private static readonly UsersContext _context = new UsersContext();
-
         public static Users GetUserInfo(string name, string password)
         {
             using (var context = new UsersContext())
@@ -15,6 +13,16 @@ namespace AdvancedFileViewer_WPF
 
                 return foundUser.FirstOrDefault();
             }
+        }
+
+        public static bool IsExist(string name)
+        {
+            using (var context = new UsersContext())
+            {
+                var foundUser = context.Users.Where((user) => (user.Name == name));
+                if (foundUser.Count() != 0) return true;
+            }
+            return false;
         }
 
         public static void AddOrUpdateUserInfo(Users newUserInfo)

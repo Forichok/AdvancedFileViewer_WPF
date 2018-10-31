@@ -9,32 +9,25 @@ using System.Windows.Input;
 using AdvancedFileViewer_WPF.TreeView;
 using DevExpress.Mvvm;
 using Interpreter_WPF_3;
-using Timer = System.Windows.Forms.Timer;
 
-namespace AdvancedFileViewer_WPF.ViewModels
+namespace AdvancedFileViewer_WPF
 {
-    class MainViewModel : ViewModelBase
+    class TreeViewModel:ViewModelBase
     {
-        private ObservableCollection<string> _logs;
-        private FileSystemObjectInfo _bufferObjectInfo;
-        private bool _isMovingOn;
+        public bool IsKeyRequired { get; set; }
         private Users _currentUser;
-        public int CommandBufferSize { get; set; } = 3;
-        public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
-        private readonly List<FileSystemObjectInfo> _spyingSystemInfos=new List<FileSystemObjectInfo>();
-        public bool IsNewUser { get; private set; }
-        public string AuthorizationMessage { get; set; } = "Welcome to the most useless aplication in the world ^_^";
+        private ObservableCollection<string> _logs;
         public ObservableCollection<string> Logs
         {
             get
             {
-                while (_logs.Count>CommandBufferSize)
+                while (_logs.Count > CommandBufferSize)
                 {
                     var firstLog = _logs.FirstOrDefault();
                     if (firstLog.Contains("has been deleted"))
                     {
                         var fullName = firstLog.Split(new[] { "has been deleted" }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-                        
+
                         var fileName = fullName.Substring(fullName.LastIndexOf('\\'));
                         var backUpPath = Directory.GetCurrentDirectory() + '\\' + _currentUser.Name + fileName;
                         if (Directory.Exists(backUpPath))
@@ -54,156 +47,47 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
             set => _logs = value;
         }
-        public string UserName { get; set; } = "Guest";        
-        public string Password { get; set; } = "";
-        public bool IsKeyRequired { get; set; }
+        private FileSystemObjectInfo _bufferObjectInfo;
+        private bool _isMovingOn;
+        private readonly Timer _timer;        
+        public int CommandBufferSize { get; set; } = 3;
+        public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
+        private readonly List<FileSystemObjectInfo> _spyingSystemInfos = new List<FileSystemObjectInfo>();
 
-        public MainViewModel()
+
+        public TreeViewModel(Users user)
         {
-            _currentUser = DbHandler.GetUserInfo(UserName, Password);
-            _logs = new ObservableCollection<string>(_currentUser.Logs.Split(';').Select((i) => i.Trim()));
-            CurrentDirectories = new ObservableCollection<FileSystemObjectInfo>(new List<FileSystemObjectInfo>()
-            {
-                new FileSystemObjectInfo(new DirectoryInfo(_currentUser.CurrentDirectory.Length == 0
-                    ? Environment.SpecialFolder.Desktop.ToString()
-                    : _currentUser.CurrentDirectory))
-            });
-            var timer = new Timer {Interval = 1000};
-            timer.Tick += Timer_Tick;
-            timer.Start();
+            _currentUser = user;
+            CurrentDirectories = new ObservableCollection<FileSystemObjectInfo>(new List<FileSystemObjectInfo>() { new FileSystemObjectInfo(new DirectoryInfo(_currentUser.CurrentDirectory)) });
+            _timer = new Timer();
+            _timer.Tick += Timer_Tick;
+            _timer.Interval = 1000;
+            _timer.Start();
             LoadSpying();
         }
+
 
         private void Timer_Tick(object sender, EventArgs e)
         {
             foreach (var info in _spyingSystemInfos)
             {
-                FileSystemInfo newInfo=null;
+                FileSystemInfo newInfo = null;
                 var path = info.FileSystemInfo.FullName;
- 
-                    if(Directory.Exists(path))
+
+                if (Directory.Exists(path))
                     newInfo = new DirectoryInfo(path);
-                    if(File.Exists(path))
+                if (File.Exists(path))
                     newInfo = new FileInfo(path);
 
                 if (newInfo == null || info.FileSystemInfo.LastAccessTime != newInfo.LastAccessTime ||
-                    info.FileSystemInfo.LastWriteTime != newInfo.LastWriteTime) 
+                    info.FileSystemInfo.LastWriteTime != newInfo.LastWriteTime)
                 {
                     info.IsModified = true;
                 }
             }
         }
 
-        #region Commands
-        public ICommand SelectRootCommand
-        {
-            get
-            {
-                return new DelegateCommand(() =>
-                {
-                    var fbd = new FolderBrowserDialog();
-                    var result = fbd.ShowDialog();
-                    if (result == DialogResult.OK)
-                    {
-                        CurrentDirectories.Clear();
-                        CurrentDirectories.Add(new FileSystemObjectInfo(new DirectoryInfo(fbd.SelectedPath)));
-                        _currentUser.CurrentDirectory = fbd.SelectedPath;
-                        DbHandler.AddOrUpdateUserInfo(_currentUser);
-                        RaisePropertyChanged("Commands");
-                    }
-                });
-            }
-        }
-
-        public ICommand ChangeAuthorizationCommand
-        {
-            get
-            {
-                return new DelegateCommand(() => { IsNewUser = !IsNewUser; });
-            }
-        }
-
-        public ICommand ChangeKeyCommand
-        {
-            get
-            {
-                return new DelegateCommand(() =>
-                {
-                    var inputDialog = new InputDialog("Input key:");
-
-                    if (inputDialog.ShowDialog() == true)
-                    {
-                        var result = inputDialog.Answer;
-                        try
-                        {
-                            Crypto.Decryptkey = result;
-                        }
-                        catch (Exception e)
-                        {
-                            // ignored
-                        }
-                    }
-
-                });
-            }
-        }
-
-        public ICommand LoginCommand
-        {
-            get
-            {
-                return new DelegateCommand(() =>
-                {
-                    if (IsNewUser)
-                    {
-                        if (!DbHandler.IsExist(UserName))
-                        {
-                            _currentUser = new Users() {Name = UserName, Password = Password,CurrentDirectory = "",Logs = "",SpyingDirectories = ""};
-                            CurrentDirectories.Clear();
-                            Logs.Clear();
-                            
-                            AuthorizationMessage = "New account has been sucessfully created :)";
-                            DbHandler.AddOrUpdateUserInfo(_currentUser);
-                        }
-                        else
-                        {
-                            AuthorizationMessage = "Account already exists :(";
-                        }
-                    }
-                    else
-                    {
-                        var user = DbHandler.GetUserInfo(UserName, Password);
-                        if (user == null)
-                        {
-                            if (!DbHandler.IsExist(UserName))
-                            {
-                                AuthorizationMessage = "The account with this username isn't exist :(";
-                            }
-                            else
-                            {
-                                AuthorizationMessage = "The username and password you entered did not match our records :(";
-                            }
-                        }
-                        else
-                        {
-                            _currentUser = user;
-                            _logs = new ObservableCollection<string>(user.Logs.Split(';'));
-                            CurrentDirectories.Clear();
-
-                            if (user.CurrentDirectory.Trim().Length != 0)
-                            {
-                                var curDir = new FileSystemObjectInfo(new DirectoryInfo(user.CurrentDirectory));
-                                CurrentDirectories.Add(curDir);
-                            }
-
-                            LoadSpying();
-                            AuthorizationMessage = "You have sucessfully authorized :)";
-                        }                       
-                    }
-                    RaisePropertyChanged("Logs");
-                });
-            }
-        }
+        #region FileCommands
 
         public ICommand TreeDoubleClickCommand
         {
@@ -214,136 +98,15 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     try
                     {
                         var fileSystemObjectInfo = obj as FileSystemObjectInfo;
-                        OpenFile(fileSystemObjectInfo?.FileSystemInfo);
+                        OpenFile(fileSystemObjectInfo.FileSystemInfo);
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
 
                     }
                 });
             }
         }
-           
-        public ICommand ExitCommand
-        {
-            get
-            {
-                return new DelegateCommand(() =>
-                {
-                    System.Windows.Application.Current.Shutdown();
-                });
-            }
-        }
-
-        public ICommand ResetCommand
-        {
-            get
-            {
-                return new DelegateCommand<FileSystemObjectInfo>((obj) =>
-                {
-                    var commandLog = Logs.LastOrDefault();
-                    Logs.Remove(Logs.LastOrDefault());
-                    string newPath = "";
-                    string oldPath = "";
-                    if (commandLog == null) return;
-                    try
-                    {
-                        if (commandLog.Contains("has been renamed to"))
-                        {
-                            var fullNames = commandLog.Split(new[] {"has been renamed to"},
-                                StringSplitOptions.RemoveEmptyEntries);
-
-                            newPath = fullNames.LastOrDefault();
-
-                            oldPath = fullNames.FirstOrDefault();
-
-                            if (File.Exists(newPath))
-                            {
-                                File.Move(newPath, oldPath);
-                            }
-                            else if (Directory.Exists(newPath))
-                            {
-                                CopyDirectory(newPath, oldPath);
-                                Directory.Delete(newPath, true);
-                            }
-                        }
-
-                        if (commandLog.Contains("has been moved to"))
-                        {
-                            var fullNames = commandLog.Split(new[] {"has been moved to"},
-                                StringSplitOptions.RemoveEmptyEntries);
-
-                            var newDir = fullNames.LastOrDefault();
-                            oldPath = fullNames.FirstOrDefault();
-                            var fileName = oldPath.Substring(oldPath.LastIndexOf('\\'));
-
-                            newPath = newDir + fileName;
-                            if (File.Exists(newPath))
-                            {
-                                File.Move(newPath, oldPath);
-                                //       File.Delete(newPath);
-                            }
-                            else if (Directory.Exists(newPath))
-                            {
-                                Directory.Move(newPath, fileName);
-                                //   Directory.Delete(newPath, true);
-                            }
-
-                            oldPath = oldPath.Replace(fileName, "");
-                        }
-
-                        if (commandLog.Contains("has been inserted into"))
-                        {
-                            var fullNames = commandLog.Split(new[] {"has been inserted into"},
-                                StringSplitOptions.RemoveEmptyEntries);
-
-                            var fileName = fullNames.FirstOrDefault();
-                            fileName = fileName.Substring(fileName.LastIndexOf('\\'));
-                            newPath = fullNames.LastOrDefault() + fileName;
-                            if (File.Exists(newPath))
-                            {
-                                File.Delete(newPath);
-                            }
-                            else if (Directory.Exists(newPath))
-                            {
-                                Directory.Delete(newPath, true);
-                            }
-                        }
-
-                        if (commandLog.Contains("has been deleted"))
-                        {
-                            var fullNames = commandLog.Split(new[] { "has been deleted" }, StringSplitOptions.RemoveEmptyEntries);
-
-                           
-                            oldPath = fullNames.FirstOrDefault();
-                            var fileName = oldPath.Substring(oldPath.LastIndexOf('\\'));
-                            var backUpPath = Directory.GetCurrentDirectory() + '\\' + _currentUser.Name + fileName;
-                            if (Directory.Exists(backUpPath))
-                            {
-                                Directory.Move(backUpPath,oldPath);
-                            }
-                            if (File.Exists(backUpPath))
-                            {
-                                File.Move(backUpPath, oldPath);
-                            }
-
-                        }
-
-                        FileSystemObjectInfo.UpdateDirectory(CurrentDirectories.FirstOrDefault(), oldPath);
-                        FileSystemObjectInfo.UpdateDirectory(CurrentDirectories.FirstOrDefault(), newPath);
-                        
-                        _currentUser.Logs = string.Join(" ; ", Logs);
-                        DbHandler.AddOrUpdateUserInfo(_currentUser);
-                    }
-                    catch (Exception e)
-                    {
-
-                    }
-                });
-            }
-        }
-
-        #region FileCommands
 
         public ICommand SpyOnCommand
         {
@@ -355,15 +118,15 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     {
                         if (obj.IsSpyOn)
                         {
-                            if(!_spyingSystemInfos.Contains(obj))
-                            _spyingSystemInfos.Add(obj);
+                            if (!_spyingSystemInfos.Contains(obj))
+                                _spyingSystemInfos.Add(obj);
                         }
                         else
                         {
                             _spyingSystemInfos.Remove(obj);
                         }
                     }
-                    _currentUser.SpyingDirectories = string.Join(";", _spyingSystemInfos.Select((i)=>i.FileSystemInfo.FullName));
+                    _currentUser.SpyingDirectories = string.Join(";", _spyingSystemInfos.Select((i) => i.FileSystemInfo.FullName));
                     DbHandler.AddOrUpdateUserInfo(_currentUser);
                 });
             }
@@ -378,14 +141,14 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     var backUpPath = Directory.GetCurrentDirectory() + '\\' + _currentUser.Name;
                     Directory.CreateDirectory(backUpPath);
                     backUpPath += '\\' + file.FileSystemInfo.Name;
-                    
+
                     if (file.FileSystemInfo.Extension != "")
                     {
-                        File.Move(file.FileSystemInfo.FullName,backUpPath);
+                        File.Move(file.FileSystemInfo.FullName, backUpPath);
                     }
                     else
                     {
-                        Directory.Move(file.FileSystemInfo.FullName,backUpPath);
+                        Directory.Move(file.FileSystemInfo.FullName, backUpPath);
                     }
                     UpdateLogs($"{file.FileSystemInfo.FullName} has been deleted");
                     var parent = file.Parent;
@@ -419,7 +182,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                         {
                             if (obj.FileSystemInfo.Extension == "")
                             {
-                                if(_isMovingOn)
+                                if (_isMovingOn)
                                     UpdateLogs($"{_bufferObjectInfo.FileSystemInfo.FullName} has been moved to {obj.FileSystemInfo.FullName}");
                                 else
                                     UpdateLogs($"{_bufferObjectInfo.FileSystemInfo.FullName} has been inserted into {obj.FileSystemInfo.FullName}");
@@ -488,17 +251,17 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     var newPath = oldPath.Replace(obj.FileSystemInfo.Name, newName);
                     try
                     {
-                    if (obj.FileSystemInfo.Extension != "")
-                    {
-                        File.Move(oldPath, newPath);
-                        obj.Parent.Children.Add(new FileSystemObjectInfo(new FileInfo(newPath)));
-                    }
-                    else
-                    {
-                        CopyDirectory(oldPath, newPath);
-                        Directory.Delete(oldPath, true);
-                        obj.Parent.Children.Add(new FileSystemObjectInfo(new DirectoryInfo(newPath)));
-                    }
+                        if (obj.FileSystemInfo.Extension != "")
+                        {
+                            File.Move(oldPath, newPath);
+                            obj.Parent.Children.Add(new FileSystemObjectInfo(new FileInfo(newPath)));
+                        }
+                        else
+                        {
+                            CopyDirectory(oldPath, newPath);
+                            Directory.Delete(oldPath, true);
+                            obj.Parent.Children.Add(new FileSystemObjectInfo(new DirectoryInfo(newPath)));
+                        }
 
                     }
                     catch (Exception e)
@@ -640,8 +403,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
         #endregion
 
-        #endregion
-        
+
         #region Methods
 
         private void LoadSpying()
@@ -649,20 +411,17 @@ namespace AdvancedFileViewer_WPF.ViewModels
             var paths = _currentUser.SpyingDirectories.Split(';');
             foreach (var path in paths)
             {
-                if (path.Trim().Length ==0) return;
-
                 var info = FileSystemObjectInfo.UpdateSpying(CurrentDirectories.FirstOrDefault(), path);
 
                 if (info != null)
                 {
                     _spyingSystemInfos.Add(info);
                 }
-            }
-        }
+            }}
 
         private void OpenFile(FileSystemInfo file)
         {
-            if(file.Extension=="") return;
+            if (file.Extension == "") return;
             var pi = new ProcessStartInfo(file.FullName)
             {
                 Arguments = Path.GetFileName(file.FullName),
@@ -672,10 +431,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
             };
             Process.Start(pi);
         }
-        #endregion
 
-        #region Helper Methods
-        
         private static void CopyDirectory(string sourcePath, string destinationPath)
         {
             if (!Directory.Exists(destinationPath))
@@ -729,9 +485,9 @@ namespace AdvancedFileViewer_WPF.ViewModels
         private void UpdateLogs(string log)
         {
             log = log.Trim();
-            if(log.Length==0) return;
+            if (log.Length == 0) return;
             _logs.Add(log);
-            _currentUser.Logs=String.Join("; ",Logs);
+            _currentUser.Logs = String.Join("; ", Logs);
             DbHandler.AddOrUpdateUserInfo(_currentUser);
             RaisePropertyChanged("Logs");
         }
@@ -747,7 +503,8 @@ namespace AdvancedFileViewer_WPF.ViewModels
             }
             return result;
         }
+
+
         #endregion
     }
 }
-
