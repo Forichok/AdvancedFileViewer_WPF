@@ -23,7 +23,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
         public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
         private readonly List<FileSystemObjectInfo> _spyingSystemInfos=new List<FileSystemObjectInfo>();
         public bool IsNewUser { get; private set; }
-        public string AuthorizationMessage { get; set; } = "Welcome to the most useless aplication in the world ^_^";
+        public string AuthorizationMessage { get; set; } = "Welcome to the most useless application in the world ^_^";
         public ObservableCollection<string> Logs
         {
             get
