@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Input;
+using AdvancedFileViewer_WPF;
 using AdvancedFileViewer_WPF.TreeView;
 using DevExpress.Mvvm;
 using Interpreter_WPF_3;
