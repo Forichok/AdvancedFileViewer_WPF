@@ -254,83 +254,22 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     {
                         if (commandLog.Contains("has been renamed to"))
                         {
-                            var fullNames = commandLog.Split(new[] {"has been renamed to"},
-                                StringSplitOptions.RemoveEmptyEntries);
-
-                            newPath = fullNames.LastOrDefault();
-
-                            oldPath = fullNames.FirstOrDefault();
-
-                            if (File.Exists(newPath))
-                            {
-                                File.Move(newPath, oldPath);
-                            }
-                            else if (Directory.Exists(newPath))
-                            {
-                                CopyDirectory(newPath, oldPath);
-                                Directory.Delete(newPath, true);
-                            }
+                            newPath = ResetRenaming(commandLog, out oldPath);
                         }
 
                         if (commandLog.Contains("has been moved to"))
                         {
-                            var fullNames = commandLog.Split(new[] {"has been moved to"},
-                                StringSplitOptions.RemoveEmptyEntries);
-
-                            var newDir = fullNames.LastOrDefault();
-                            oldPath = fullNames.FirstOrDefault();
-                            var fileName = oldPath.Substring(oldPath.LastIndexOf('\\'));
-
-                            newPath = newDir + fileName;
-                            if (File.Exists(newPath))
-                            {
-                                File.Move(newPath, oldPath);
-                                //       File.Delete(newPath);
-                            }
-                            else if (Directory.Exists(newPath))
-                            {
-                                Directory.Move(newPath, fileName);
-                                //   Directory.Delete(newPath, true);
-                            }
-
-                            oldPath = oldPath.Replace(fileName, "");
+                            oldPath = ResetMoving(commandLog, out newPath);
                         }
 
                         if (commandLog.Contains("has been inserted into"))
                         {
-                            var fullNames = commandLog.Split(new[] {"has been inserted into"},
-                                StringSplitOptions.RemoveEmptyEntries);
-
-                            var fileName = fullNames.FirstOrDefault();
-                            fileName = fileName.Substring(fileName.LastIndexOf('\\'));
-                            newPath = fullNames.LastOrDefault() + fileName;
-                            if (File.Exists(newPath))
-                            {
-                                File.Delete(newPath);
-                            }
-                            else if (Directory.Exists(newPath))
-                            {
-                                Directory.Delete(newPath, true);
-                            }
+                            newPath = ResetInserting(commandLog);
                         }
 
                         if (commandLog.Contains("has been deleted"))
                         {
-                            var fullNames = commandLog.Split(new[] { "has been deleted" }, StringSplitOptions.RemoveEmptyEntries);
-
-                           
-                            oldPath = fullNames.FirstOrDefault();
-                            var fileName = oldPath.Substring(oldPath.LastIndexOf('\\'));
-                            var backUpPath = Directory.GetCurrentDirectory() + '\\' + _currentUser.Name + fileName;
-                            if (Directory.Exists(backUpPath))
-                            {
-                                Directory.Move(backUpPath,oldPath);
-                            }
-                            if (File.Exists(backUpPath))
-                            {
-                                File.Move(backUpPath, oldPath);
-                            }
-
+                            oldPath = ResetDeleting(commandLog);
                         }
 
                         FileSystemObjectInfo.UpdateDirectory(CurrentDirectories.FirstOrDefault(), oldPath);
@@ -345,6 +284,98 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     }
                 });
             }
+        }
+
+        private string ResetDeleting(string commandLog)
+        {
+            string oldPath;
+            var fullNames = commandLog.Split(new[] {"has been deleted"}, StringSplitOptions.RemoveEmptyEntries);
+
+
+            oldPath = fullNames.FirstOrDefault();
+            var fileName = oldPath.Substring(oldPath.LastIndexOf('\\'));
+            var backUpPath = Directory.GetCurrentDirectory() + '\\' + _currentUser.Name + fileName;
+            if (Directory.Exists(backUpPath))
+            {
+                Directory.Move(backUpPath, oldPath);
+            }
+
+            if (File.Exists(backUpPath))
+            {
+                File.Move(backUpPath, oldPath);
+            }
+
+            return oldPath;
+        }
+
+        private static string ResetInserting(string commandLog)
+        {
+            string newPath;
+            var fullNames = commandLog.Split(new[] {"has been inserted into"},
+                StringSplitOptions.RemoveEmptyEntries);
+
+            var fileName = fullNames.FirstOrDefault();
+            fileName = fileName.Substring(fileName.LastIndexOf('\\'));
+            newPath = fullNames.LastOrDefault() + fileName;
+            if (File.Exists(newPath))
+            {
+                File.Delete(newPath);
+            }
+            else if (Directory.Exists(newPath))
+            {
+                Directory.Delete(newPath, true);
+            }
+
+            return newPath;
+        }
+
+        private static string ResetMoving(string commandLog, out string newPath)
+        {
+            string oldPath;
+            var fullNames = commandLog.Split(new[] {"has been moved to"},
+                StringSplitOptions.RemoveEmptyEntries);
+
+            var newDir = fullNames.LastOrDefault();
+            oldPath = fullNames.FirstOrDefault();
+            var fileName = oldPath.Substring(oldPath.LastIndexOf('\\'));
+
+            newPath = newDir + fileName;
+            if (File.Exists(newPath))
+            {
+                File.Move(newPath, oldPath);
+                //       File.Delete(newPath);
+            }
+            else if (Directory.Exists(newPath))
+            {
+                Directory.Move(newPath, fileName);
+                //   Directory.Delete(newPath, true);
+            }
+
+            oldPath = oldPath.Replace(fileName, "");
+            return oldPath;
+        }
+
+        private static string ResetRenaming(string commandLog, out string oldPath)
+        {
+            string newPath;
+            var fullNames = commandLog.Split(new[] {"has been renamed to"},
+                StringSplitOptions.RemoveEmptyEntries);
+
+            newPath = fullNames.LastOrDefault();
+
+            oldPath = fullNames.FirstOrDefault();
+
+            if (File.Exists(newPath))
+            {
+                File.Move(newPath, oldPath);
+            }
+            else if (Directory.Exists(newPath))
+            {
+                CopyDirectory(newPath, oldPath);
+                Directory.Delete(newPath, true);
+            }
+
+            return newPath;
         }
 
         #region FileCommands
