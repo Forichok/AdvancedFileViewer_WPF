@@ -1,6 +1,7 @@
 ﻿using System.Data.Entity.Migrations;
 using System.Linq;
 
+
 namespace AdvancedFileViewer_WPF
 {
     static class DbHandler

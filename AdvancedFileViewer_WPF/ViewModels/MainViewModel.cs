@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Input;
+using AdvancedFileViewer_WPF;
 using AdvancedFileViewer_WPF.TreeView;
 using DevExpress.Mvvm;
 using Interpreter_WPF_3;
@@ -60,6 +61,9 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
         public MainViewModel()
         {
+            RSACrypto.rsaEngine(0);
+            RSACrypto.generateKeys();
+            
             _currentUser = DbHandler.GetUserInfo(UserName, Password);
             _logs = new ObservableCollection<string>(_currentUser.Logs.Split(';').Select((i) => i.Trim()));
             CurrentDirectories = new ObservableCollection<FileSystemObjectInfo>(new List<FileSystemObjectInfo>()
@@ -617,7 +621,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                 {
                     if (obj.FileSystemInfo.Extension != "")
                     {
-                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RSAEncrypt);
+                        StartCrypting(obj.FileSystemInfo.FullName, RSACrypto.RSAEncrypt);
                     }
                 });
             }
@@ -632,7 +636,7 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     if (obj.FileSystemInfo.Extension != "")
                     {
 
-                        StartCrypting(obj.FileSystemInfo.FullName, Crypto.RSADecrypt);
+                        StartCrypting(obj.FileSystemInfo.FullName, RSACrypto.RSADecrypt);
                     }
                 });
             }

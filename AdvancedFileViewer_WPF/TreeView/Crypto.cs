@@ -10,6 +10,34 @@ using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Security;
 
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.IO;
+using System.Security;
+using System.Security.Cryptography;
+
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Modes;
+using Org.BouncyCastle.Crypto.Paddings;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Utilities.Encoders;
+using Org.BouncyCastle.Utilities.IO.Pem;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.X509;
+using Org.BouncyCastle.Asn1.Pkcs;
+using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.Crypto.Encodings;
 
 namespace AdvancedFileViewer_WPF.TreeView
 {
@@ -173,11 +201,11 @@ namespace AdvancedFileViewer_WPF.TreeView
         {
 
             CSPParam = new CspParameters(1) {Flags = CspProviderFlags.UseMachineKeyStore};
-            
+
             RSACryptoServiceProvider rsaGenKeys = new RSACryptoServiceProvider();
             string privateXml = rsaGenKeys.ToXmlString(true);
             string publicXml = rsaGenKeys.ToXmlString(false);
-            
+
             //Decode with private key
             var rsaPrivate = new RSACryptoServiceProvider();
             rsaPrivate.FromXmlString(privateXml);
@@ -237,9 +265,158 @@ namespace AdvancedFileViewer_WPF.TreeView
             return rsaCryptoProvider.VerifyData(data, CryptoConfig.MapNameToOID("SHA512"), signature);
         }
     }
+
+    static class RSACrypto
+    {        
+        static IAsymmetricBlockCipher cipher;
+        static RsaKeyPairGenerator rsaKeyPairGnr;
+        static RsaKeyParameters publicKey;
+        static RsaKeyParameters privateKey;
+        static Org.BouncyCastle.Crypto.AsymmetricCipherKeyPair keyPair;                    
+
+        //for OAEP
+        static SHA256Managed hash = new SHA256Managed();
+        static SecureRandom randomNumber = new SecureRandom();
+        static byte[] encodingParam = hash.ComputeHash(Encoding.UTF8.GetBytes(randomNumber.ToString()));
+
+        private static void btnImportKeys_Click(string privKey, string pubKey)
+        {
+            privateKey =
+                (RsaPrivateCrtKeyParameters) PrivateKeyFactory.CreateKey(Convert.FromBase64String(privKey));
+            publicKey = (RsaKeyParameters) PublicKeyFactory.CreateKey(Convert.FromBase64String(pubKey));
+        }
+
+        public static void generateKeys()
+        {
+            // RSAKeyPairGenerator generates the RSA Key pair based on the random number and strength of key required
+            rsaKeyPairGnr = new RsaKeyPairGenerator();
+            rsaKeyPairGnr.Init(new Org.BouncyCastle.Crypto.KeyGenerationParameters(new SecureRandom(), 2048));
+            keyPair = rsaKeyPairGnr.GenerateKeyPair();
+
+            publicKey = (RsaKeyParameters) keyPair.Public;
+            privateKey = (RsaKeyParameters) keyPair.Private;            
+        }
+
+        public static void rsaEngine(int flag)
+        {
+            if (flag == 0)
+            {
+                // Creating the RSA algorithm object
+                cipher = new RsaEngine();
+            }
+            else
+            {
+                cipher = new OaepEncoding(new RsaEngine(), new Sha256Digest(), encodingParam);
+            }
+        }
+
+        public static byte[] RSAEncrypt(byte[] bytesToEncrypt,string key)
+        {
+            // Initializing the RSA object for Encryption with RSA public key. Remember, for encryption, public key is needed
+            cipher.Init(true, publicKey);
+
+            //Encrypting the input bytes
+            var cipheredBytes = cipher.ProcessBlock(bytesToEncrypt, 0, bytesToEncrypt.Length);
+            return cipheredBytes;
+        }
+
+        public static byte[] RSADecrypt(byte[] cipheredBytes,string key)
+        {
+            
+            cipher.Init(false, privateKey);
+            var result = cipher.ProcessBlock(cipheredBytes, 0, cipheredBytes.Length);
+            return result;
+        }
+
+
+        private static byte[] btnSign_Click(byte[] bytesToSign)
+        {
+            // http://stackoverflow.com/questions/8830510/c-sharp-sign-data-with-rsa-using-bouncycastle
+
+            /* Make the key */
+            //RsaKeyParameters key = MakeKey(privateModulusHexString, privateExponentHexString, true);
+
+            /* Init alg */
+            ISigner sig;
+            switch (0)
+            {
+                //http://www.apps.ietf.org/rfc/rfc3447.html#sec-9.2
+                case 0:
+                    sig = SignerUtilities.GetSigner("RSA");
+                    break;
+                //http://www.apps.ietf.org/rfc/rfc3447.html#sec-9.1
+                case 1:
+                    sig = SignerUtilities.GetSigner("SHA1withRSA");
+                    break;
+                case 2:
+                    sig = SignerUtilities.GetSigner("SHA1withRSA/ISO9796-2");
+                    break;
+
+                default:
+                    sig = SignerUtilities.GetSigner("RSA");
+                    break;
+            }
+
+            /* Populate key */
+            sig.Init(true, privateKey);
+
+            /* Calc the signature */
+            sig.BlockUpdate(bytesToSign, 0, bytesToSign.Length);
+            byte[] signature = sig.GenerateSignature();
+
+            return signature;
+        }
+
+        private static void butVerify_Click(int signType)
+        {
+
+            /* Make the key */
+            //RsaKeyParameters key = MakeKey(publicModulusHexString, publicExponentHexString, false);
+
+            /* Init alg */
+            ISigner signer;
+            switch (signType)
+            {
+                //http://www.apps.ietf.org/rfc/rfc3447.html#sec-9.2
+                case 0:
+                    signer = SignerUtilities.GetSigner("RSA");
+                    break;
+                //http://www.apps.ietf.org/rfc/rfc3447.html#sec-9.1
+                case 1:
+                    signer = SignerUtilities.GetSigner("SHA1withRSA");
+                    break;
+
+                case 2:
+                    signer = SignerUtilities.GetSigner("SHA1withRSA/ISO9796-2");
+                    break;
+
+                default:
+                    signer = SignerUtilities.GetSigner("RSA");
+                    break;
+            }
+
+            /* Populate key */
+            signer.Init(false, publicKey);
+
+            ///* Get the signature into bytes */
+            //var expectedSig = Convert.FromBase64String(tbOutput.Text);
+
+            ///* Get the bytes to be signed from the string */
+            //var msgBytes = Encoding.UTF8.GetBytes(tbInput.Text);
+
+            ///* Calculate the signature and see if it matches */
+            //signer.BlockUpdate(msgBytes, 0, msgBytes.Length);
+
+            //if (signer.VerifySignature(expectedSig))
+            //{
+            //    MessageBox.Show("Poprawny", "Weryfikacja");
+            //}
+            //else
+            //{
+            //    MessageBox.Show("niepoprawny", "Weryfikacja");
+            //}
+
+        }
+    }
 }
-
-
-
-
 
