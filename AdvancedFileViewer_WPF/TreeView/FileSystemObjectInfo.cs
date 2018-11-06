@@ -35,19 +35,14 @@ namespace AdvancedFileViewer_WPF.TreeView
         #region Properties
 
         public bool IsModified { get; set; }
-
         public bool IsSpyOn { get; set; }
-
-        public ObservableCollection<FileSystemObjectInfo> Children { get; set; }
-
-        public FileSystemObjectInfo Parent { get; set; }
-
-        public ImageSource ImageSource { get; set; }
-
         public bool IsExpanded { get; set; }
         
-        public FileSystemInfo FileSystemInfo { get; set; }        
-
+        public ImageSource ImageSource { get; set; }
+        public FileSystemObjectInfo Parent { get; set; }
+        public FileSystemInfo FileSystemInfo { get; set; }
+        public ObservableCollection<FileSystemObjectInfo> Children { get; set; }
+        
         #endregion
 
         #region Methods

@@ -42,7 +42,7 @@
         </Grid.ColumnDefinitions>
 
         <Menu VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.ColumnSpan="2" Grid.Column="0"
-              Grid.Row="0" Height="48" Margin="0,0,-0.444,0">
+              Grid.Row="0">
             <MenuItem Header="File">
                 <MenuItem Header="Select Folder" Command="{Binding SelectRootCommand}"/>
                 <Separator />
@@ -70,8 +70,16 @@
                 <MenuItem>
                     <MenuItem.Header>
                         <WrapPanel>
-                            <TextBlock VerticalAlignment="Center" Text="Commands buffer: "></TextBlock>
+                            <TextBlock VerticalAlignment="Center" Text="Commands buffer:  "></TextBlock>
                             <TextBox VerticalAlignment="Center" Text="{Binding CommandBufferSize}"></TextBox>
+                        </WrapPanel>
+                    </MenuItem.Header>
+                </MenuItem>
+                <MenuItem>
+                    <MenuItem.Header>
+                        <WrapPanel>
+                            <TextBlock VerticalAlignment="Center" Text="RSA keys update interval (minutes):  "></TextBlock>
+                            <TextBox VerticalAlignment="Center" Text="{Binding RsaKeyUpdateInterval}"></TextBox>
                         </WrapPanel>
                     </MenuItem.Header>
                 </MenuItem>

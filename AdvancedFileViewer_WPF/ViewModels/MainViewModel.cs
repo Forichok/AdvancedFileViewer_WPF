@@ -16,26 +16,49 @@ namespace AdvancedFileViewer_WPF.ViewModels
 {
     class MainViewModel : ViewModelBase
     {
-        private ObservableCollection<string> _logs;
+        #region Private Properties
+
+        private readonly List<FileSystemObjectInfo> _spyingSystemInfos;
         private FileSystemObjectInfo _bufferObjectInfo;
-        private bool _isMovingOn;
+        private ObservableCollection<string> _logs;
         private Users _currentUser;
-        public int CommandBufferSize { get; set; } = 3;
-        public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
-        private readonly List<FileSystemObjectInfo> _spyingSystemInfos=new List<FileSystemObjectInfo>();
+        private bool _isMovingOn;
+        private readonly Timer _rsaKeysTimer;
+        private int _rsaKeyUpdateInterval = 10;
+
+        #endregion
+
+        #region Public Properties
+
+        public int RsaKeyUpdateInterval
+        {
+            get => _rsaKeyUpdateInterval;
+            set
+            {
+                _rsaKeysTimer.Interval = (int) new TimeSpan(0, 10, 0).TotalMilliseconds;
+                _rsaKeyUpdateInterval = value;
+            }
+        }
+
         public bool IsNewUser { get; private set; }
+        public bool IsKeyRequired { get; set; }
+        public int CommandBufferSize { get; set; } = 3;
+        public string UserName { get; set; } = "Guest";
+        public string Password { get; set; } = "";
         public string AuthorizationMessage { get; set; } = "Welcome to the most useless application in the world ^_^";
+
+        public ObservableCollection<FileSystemObjectInfo> CurrentDirectories { get; set; }
         public ObservableCollection<string> Logs
         {
             get
             {
-                while (_logs.Count>CommandBufferSize)
+                while (_logs.Count > CommandBufferSize)
                 {
                     var firstLog = _logs.FirstOrDefault();
                     if (firstLog.Contains("has been deleted"))
                     {
                         var fullName = firstLog.Split(new[] { "has been deleted" }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-                        
+
                         var fileName = fullName.Substring(fullName.LastIndexOf('\\'));
                         var backUpPath = Directory.GetCurrentDirectory() + '\\' + _currentUser.Name + fileName;
                         if (Directory.Exists(backUpPath))
@@ -55,15 +78,16 @@ namespace AdvancedFileViewer_WPF.ViewModels
 
             set => _logs = value;
         }
-        public string UserName { get; set; } = "Guest";        
-        public string Password { get; set; } = "";
-        public bool IsKeyRequired { get; set; }
+
+        #endregion
+
+        #region Constructors
 
         public MainViewModel()
         {
             RSACrypto.rsaEngine(0);
             RSACrypto.generateKeys();
-            
+            _spyingSystemInfos = new List<FileSystemObjectInfo>();
             _currentUser = DbHandler.GetUserInfo(UserName, Password);
             _logs = new ObservableCollection<string>(_currentUser.Logs.Split(';').Select((i) => i.Trim()));
             CurrentDirectories = new ObservableCollection<FileSystemObjectInfo>(new List<FileSystemObjectInfo>()
@@ -72,31 +96,24 @@ namespace AdvancedFileViewer_WPF.ViewModels
                     ? Environment.SpecialFolder.Desktop.ToString()
                     : _currentUser.CurrentDirectory))
             });
+
+            _rsaKeysTimer=new Timer();
+            _rsaKeysTimer.Interval = (int) new TimeSpan(0, 10, 0).TotalMilliseconds;
+            _rsaKeysTimer.Tick += RsaKeysTimer_Tick;
+            _rsaKeysTimer.Start();
+
             var timer = new Timer {Interval = 1000};
             timer.Tick += Timer_Tick;
             timer.Start();
             LoadSpying();
         }
 
-        private void Timer_Tick(object sender, EventArgs e)
+        private void RsaKeysTimer_Tick(object sender, EventArgs e)
         {
-            foreach (var info in _spyingSystemInfos)
-            {
-                FileSystemInfo newInfo=null;
-                var path = info.FileSystemInfo.FullName;
- 
-                    if(Directory.Exists(path))
-                    newInfo = new DirectoryInfo(path);
-                    if(File.Exists(path))
-                    newInfo = new FileInfo(path);
-
-                if (newInfo == null || info.FileSystemInfo.LastAccessTime != newInfo.LastAccessTime ||
-                    info.FileSystemInfo.LastWriteTime != newInfo.LastWriteTime) 
-                {
-                    info.IsModified = true;
-                }
-            }
+            RSACrypto.generateKeys();
         }
+
+        #endregion
 
         #region Commands
         public ICommand SelectRootCommand
@@ -710,7 +727,26 @@ namespace AdvancedFileViewer_WPF.ViewModels
         #endregion
 
         #region Helper Methods
-        
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            foreach (var info in _spyingSystemInfos)
+            {
+                FileSystemInfo newInfo = null;
+                var path = info.FileSystemInfo.FullName;
+
+                if (Directory.Exists(path))
+                    newInfo = new DirectoryInfo(path);
+                if (File.Exists(path))
+                    newInfo = new FileInfo(path);
+
+                if (newInfo == null || info.FileSystemInfo.LastAccessTime != newInfo.LastAccessTime ||
+                    info.FileSystemInfo.LastWriteTime != newInfo.LastWriteTime)
+                {
+                    info.IsModified = true;
+                }
+            }
+        }
+
         private static void CopyDirectory(string sourcePath, string destinationPath)
         {
             if (!Directory.Exists(destinationPath))

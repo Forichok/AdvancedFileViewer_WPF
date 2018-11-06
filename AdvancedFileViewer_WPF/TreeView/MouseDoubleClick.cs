@@ -34,8 +34,7 @@ namespace AdvancedFileViewer_WPF.TreeView
 
         private static void CommandChanged(DependencyObject target, DependencyPropertyChangedEventArgs e)
         {
-            Control control = target as Control;
-            if (control != null)
+            if (target is Control control)
             {
                 if ((e.NewValue != null) && (e.OldValue == null))
                 {
